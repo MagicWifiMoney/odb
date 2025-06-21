@@ -29,7 +29,8 @@ import { Badge } from './ui/badge'
 import { formatCurrency } from '../lib/api'
 import { useToast } from '../hooks/use-toast'
 import { supabase } from '../lib/supabase'
-import { analytics, trackDashboardLoad, trackDataSync } from '../lib/analytics'
+// Analytics temporarily disabled for build
+// import { analytics, trackDashboardLoad, trackDataSync } from '../lib/analytics'
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8']
 
@@ -133,15 +134,15 @@ export default function Dashboard() {
       console.log('All Supabase queries completed successfully!')
       console.log('Opportunities count:', opportunities?.length)
       
-      // Track dashboard load analytics
+      // Track dashboard load analytics (temporarily disabled)
       const loadTime = performance.now() - startTime
-      trackDashboardLoad(loadTime, totalCount || 0)
+      // trackDashboardLoad(loadTime, totalCount || 0)
       
     } catch (error) {
       console.error('Failed to load dashboard data:', error)
       
-      // Track error
-      analytics.trackError(error, { context: 'dashboard_load' })
+      // Track error (temporarily disabled)
+      // analytics.trackError(error, { context: 'dashboard_load' })
       
       toast({
         title: "Error",
@@ -161,14 +162,14 @@ export default function Dashboard() {
         description: "Refreshing dashboard data...",
       })
       
-      // Track sync start
-      trackDataSync('manual', 'started')
+      // Track sync start (temporarily disabled)
+      // trackDataSync('manual', 'started')
       
       // Since we're using Supabase directly, just reload the data
       await loadDashboardData()
       
-      // Track sync success
-      trackDataSync('manual', 'completed')
+      // Track sync success (temporarily disabled)
+      // trackDataSync('manual', 'completed')
       
       toast({
         title: "Refresh Complete",
@@ -177,9 +178,9 @@ export default function Dashboard() {
     } catch (error) {
       console.error('Refresh failed:', error)
       
-      // Track sync failure
-      trackDataSync('manual', 'failed')
-      analytics.trackError(error, { context: 'manual_sync' })
+      // Track sync failure (temporarily disabled)
+      // trackDataSync('manual', 'failed')
+      // analytics.trackError(error, { context: 'manual_sync' })
       
       toast({
         title: "Refresh Failed",
