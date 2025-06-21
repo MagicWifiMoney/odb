@@ -23,10 +23,25 @@ CORS(app)
 # Health endpoint for Railway deployment
 @app.route('/api/health')
 def health():
+    database_url = app.config.get('SQLALCHEMY_DATABASE_URI', 'unknown')
+    db_type = 'PostgreSQL' if 'postgresql' in database_url else 'SQLite'
+    
+    # Test database connection
+    db_status = 'unknown'
+    try:
+        from sqlalchemy import text
+        db.session.execute(text('SELECT 1'))
+        db_status = 'connected'
+    except Exception as e:
+        db_status = f'error: {str(e)[:100]}'
+    
     return jsonify({
         'status': 'healthy',
         'message': 'Opportunity Dashboard API is running',
-        'database': 'PostgreSQL' if 'postgresql' in app.config['SQLALCHEMY_DATABASE_URI'] else 'SQLite'
+        'database': db_type,
+        'database_status': db_status,
+        'database_url_prefix': database_url[:50] + '...' if len(database_url) > 50 else database_url,
+        'supabase_configured': bool(os.getenv('SUPABASE_URL'))
     })
 
 # API info endpoint
@@ -147,8 +162,26 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize database
 db.init_app(app)
-with app.app_context():
-    db.create_all()
+
+# Safer database initialization with error handling
+try:
+    with app.app_context():
+        # Test the connection first
+        from sqlalchemy import text
+        db.session.execute(text('SELECT 1'))
+        
+        # If connection works, create tables
+        db.create_all()
+        print(f"✅ Database connected successfully: {database_url[:50]}...")
+        
+except Exception as e:
+    print(f"❌ Database connection failed: {e}")
+    print(f"🔧 DATABASE_URL: {database_url[:50]}...")
+    print("⚠️  App will start but database operations may fail")
+    
+    # For Railway deployment, we still want the app to start
+    # so we can see the error in logs and debug
+    pass
 
 @app.route('/')
 def serve_index():

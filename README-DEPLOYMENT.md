@@ -53,6 +53,13 @@ PERPLEXITY_API_KEY=your_key
 FIRECRAWL_API_KEY=your_key
 ```
 
+### **Supabase Variables:**
+```bash
+SUPABASE_URL=https://zkdrpchjejelgsuuffli.supabase.co
+SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InprZHJwY2hqZWplbGdzdXVmZmxpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAyMjY4MTMsImV4cCI6MjA2NTgwMjgxM30.xBBArkhXeFT26BmVI-WNag0qa0hHGdFUmxmlcTi4CGg
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InprZHJwY2hqZWplbGdzdXVmZmxpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MDIyNjgxMywiZXhwIjoyMDY1ODAyODEzfQ.sfXaVkEOIiJMpKdTt7YLauIwxcqjhL1J04Vt92neWR4
+```
+
 ---
 
 ## 📋 **Pre-Deployment Checklist**
