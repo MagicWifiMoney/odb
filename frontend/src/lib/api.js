@@ -162,6 +162,73 @@ class ApiClient {
   async getPerplexityStatus() {
     return this.request('/perplexity/status')
   }
+
+  // Advanced Perplexity AI Intelligence endpoints
+  async enrichOpportunity(opportunity) {
+    return this.request('/perplexity/enrich-opportunity', {
+      method: 'POST',
+      body: JSON.stringify({ opportunity }),
+    })
+  }
+
+  async scoreOpportunity(opportunity, userProfile = null) {
+    return this.request('/perplexity/score-opportunity', {
+      method: 'POST',
+      body: JSON.stringify({ 
+        opportunity, 
+        user_profile: userProfile 
+      }),
+    })
+  }
+
+  async analyzeCompetitiveLandscape(naicsCodes, agency, timeframe = '2years') {
+    return this.request('/perplexity/competitive-landscape', {
+      method: 'POST',
+      body: JSON.stringify({ 
+        naics_codes: naicsCodes,
+        agency: agency,
+        timeframe: timeframe
+      }),
+    })
+  }
+
+  async bulkEnrichOpportunities(opportunityIds) {
+    return this.request('/perplexity/bulk-enrich', {
+      method: 'POST',
+      body: JSON.stringify({ opportunity_ids: opportunityIds }),
+    })
+  }
+
+  async analyzeCompliance(opportunity) {
+    return this.request('/perplexity/compliance-analysis', {
+      method: 'POST',
+      body: JSON.stringify({ opportunity }),
+    })
+  }
+
+  async generateSmartAlerts(userProfile = null) {
+    return this.request('/perplexity/smart-alerts', {
+      method: 'POST',
+      body: JSON.stringify({ user_profile: userProfile }),
+    })
+  }
+
+  async analyzeMarketTrends(timeframe = '6months', focusAreas = []) {
+    return this.request('/perplexity/trend-analysis', {
+      method: 'POST',
+      body: JSON.stringify({ 
+        timeframe: timeframe,
+        focus_areas: focusAreas 
+      }),
+    })
+  }
+
+  async forecastMarketConditions(horizon = '12months') {
+    return this.request('/perplexity/market-forecast', {
+      method: 'POST',
+      body: JSON.stringify({ horizon: horizon }),
+    })
+  }
 }
 
 // Create and export API client instance

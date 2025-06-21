@@ -299,6 +299,259 @@ def predict_opportunities():
         return jsonify({'error': 'Internal server error'}), 500
 
 
+@perplexity_bp.route('/perplexity/enrich-opportunity', methods=['POST'])
+def enrich_opportunity():
+    """Enrich opportunity with comprehensive intelligence"""
+    try:
+        data = request.get_json()
+        
+        if not data or 'opportunity' not in data:
+            return jsonify({'error': 'Opportunity data required'}), 400
+        
+        opportunity = data['opportunity']
+        
+        if not financial_service.perplexity:
+            return jsonify({'error': 'Perplexity service not available'}), 503
+        
+        result = financial_service.perplexity.enrich_opportunity(opportunity)
+        
+        if 'error' in result:
+            return jsonify(result), 500
+        
+        return jsonify({
+            'success': True,
+            'data': result
+        })
+        
+    except Exception as e:
+        logger.error(f"Opportunity enrichment failed: {e}")
+        return jsonify({'error': 'Enrichment failed'}), 500
+
+
+@perplexity_bp.route('/perplexity/score-opportunity', methods=['POST'])
+def score_opportunity():
+    """Score opportunity using AI analysis"""
+    try:
+        data = request.get_json()
+        
+        if not data or 'opportunity' not in data:
+            return jsonify({'error': 'Opportunity data required'}), 400
+        
+        opportunity = data['opportunity']
+        user_profile = data.get('user_profile', {})
+        
+        if not financial_service.perplexity:
+            return jsonify({'error': 'Perplexity service not available'}), 503
+        
+        result = financial_service.perplexity.score_opportunity_with_ai(opportunity, user_profile)
+        
+        if 'error' in result:
+            return jsonify(result), 500
+        
+        return jsonify({
+            'success': True,
+            'data': result
+        })
+        
+    except Exception as e:
+        logger.error(f"Opportunity scoring failed: {e}")
+        return jsonify({'error': 'Scoring failed'}), 500
+
+
+@perplexity_bp.route('/perplexity/competitive-landscape', methods=['POST'])
+def analyze_competitive_landscape():
+    """Analyze competitive landscape for market segment"""
+    try:
+        data = request.get_json()
+        
+        if not data or 'naics_codes' not in data or 'agency' not in data:
+            return jsonify({'error': 'NAICS codes and agency required'}), 400
+        
+        naics_codes = data['naics_codes']
+        agency = data['agency']
+        timeframe = data.get('timeframe', '2years')
+        
+        if not financial_service.perplexity:
+            return jsonify({'error': 'Perplexity service not available'}), 503
+        
+        result = financial_service.perplexity.analyze_competitive_landscape(naics_codes, agency, timeframe)
+        
+        if 'error' in result:
+            return jsonify(result), 500
+        
+        return jsonify({
+            'success': True,
+            'data': result
+        })
+        
+    except Exception as e:
+        logger.error(f"Competitive analysis failed: {e}")
+        return jsonify({'error': 'Analysis failed'}), 500
+
+
+@perplexity_bp.route('/perplexity/bulk-enrich', methods=['POST'])
+def bulk_enrich_opportunities():
+    """Bulk enrich multiple opportunities"""
+    try:
+        data = request.get_json()
+        
+        if not data or 'opportunity_ids' not in data:
+            return jsonify({'error': 'Opportunity IDs required'}), 400
+        
+        opportunity_ids = data['opportunity_ids']
+        max_enrichments = min(len(opportunity_ids), 10)  # Limit to 10 for API efficiency
+        
+        if not financial_service.perplexity:
+            return jsonify({'error': 'Perplexity service not available'}), 503
+        
+        # Get opportunities from database
+        from src.models.opportunity import Opportunity
+        opportunities = Opportunity.query.filter(Opportunity.id.in_(opportunity_ids[:max_enrichments])).all()
+        
+        enriched_results = []
+        for opp in opportunities:
+            try:
+                opp_data = {
+                    'title': opp.title,
+                    'agency_name': opp.agency_name,
+                    'estimated_value': opp.estimated_value,
+                    'opportunity_number': opp.opportunity_number,
+                    'description': opp.description,
+                    'due_date': opp.due_date.isoformat() if opp.due_date else None,
+                    'location': opp.location
+                }
+                
+                enrichment = financial_service.perplexity.enrich_opportunity(opp_data)
+                enriched_results.append({
+                    'opportunity_id': opp.id,
+                    'enrichment': enrichment
+                })
+                
+            except Exception as e:
+                logger.error(f"Failed to enrich opportunity {opp.id}: {e}")
+                enriched_results.append({
+                    'opportunity_id': opp.id,
+                    'error': str(e)
+                })
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'enriched_count': len(enriched_results),
+                'results': enriched_results
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Bulk enrichment failed: {e}")
+        return jsonify({'error': 'Bulk enrichment failed'}), 500
+
+
+@perplexity_bp.route('/perplexity/compliance-analysis', methods=['POST'])
+def analyze_compliance_requirements():
+    """Analyze compliance and requirements for an opportunity"""
+    try:
+        data = request.get_json()
+        
+        if not data or 'opportunity' not in data:
+            return jsonify({'error': 'Opportunity data required'}), 400
+        
+        opportunity = data['opportunity']
+        
+        if not financial_service.perplexity:
+            return jsonify({'error': 'Perplexity service not available'}), 503
+        
+        result = financial_service.perplexity.analyze_compliance_requirements(opportunity)
+        
+        if 'error' in result:
+            return jsonify(result), 500
+        
+        return jsonify({
+            'success': True,
+            'data': result
+        })
+        
+    except Exception as e:
+        logger.error(f"Compliance analysis failed: {e}")
+        return jsonify({'error': 'Compliance analysis failed'}), 500
+
+
+@perplexity_bp.route('/perplexity/smart-alerts', methods=['POST'])
+def generate_smart_alerts():
+    """Generate smart opportunity alerts with context"""
+    try:
+        data = request.get_json() or {}
+        user_profile = data.get('user_profile', {})
+        
+        if not financial_service.perplexity:
+            return jsonify({'error': 'Perplexity service not available'}), 503
+        
+        result = financial_service.perplexity.generate_smart_alerts(user_profile)
+        
+        if 'error' in result:
+            return jsonify(result), 500
+        
+        return jsonify({
+            'success': True,
+            'data': result
+        })
+        
+    except Exception as e:
+        logger.error(f"Smart alerts generation failed: {e}")
+        return jsonify({'error': 'Smart alerts failed'}), 500
+
+
+@perplexity_bp.route('/perplexity/trend-analysis', methods=['POST'])
+def analyze_market_trends():
+    """Analyze market trends and intelligence"""
+    try:
+        data = request.get_json() or {}
+        timeframe = data.get('timeframe', '6months')
+        focus_areas = data.get('focus_areas', [])
+        
+        if not financial_service.perplexity:
+            return jsonify({'error': 'Perplexity service not available'}), 503
+        
+        result = financial_service.perplexity.analyze_market_trends(timeframe, focus_areas)
+        
+        if 'error' in result:
+            return jsonify(result), 500
+        
+        return jsonify({
+            'success': True,
+            'data': result
+        })
+        
+    except Exception as e:
+        logger.error(f"Trend analysis failed: {e}")
+        return jsonify({'error': 'Trend analysis failed'}), 500
+
+
+@perplexity_bp.route('/perplexity/market-forecast', methods=['POST'])
+def forecast_market_conditions():
+    """Generate market forecasting and predictions"""
+    try:
+        data = request.get_json() or {}
+        horizon = data.get('horizon', '12months')
+        
+        if not financial_service.perplexity:
+            return jsonify({'error': 'Perplexity service not available'}), 503
+        
+        result = financial_service.perplexity.forecast_market_conditions(horizon)
+        
+        if 'error' in result:
+            return jsonify(result), 500
+        
+        return jsonify({
+            'success': True,
+            'data': result
+        })
+        
+    except Exception as e:
+        logger.error(f"Market forecasting failed: {e}")
+        return jsonify({'error': 'Market forecasting failed'}), 500
+
+
 @perplexity_bp.route('/perplexity/status', methods=['GET'])
 def get_perplexity_status():
     """Get Perplexity integration status"""
@@ -312,6 +565,17 @@ def get_perplexity_status():
                 'api_key_configured': api_key_configured,
                 'service_available': service_available,
                 'status': 'operational' if (api_key_configured and service_available) else 'configuration_needed',
+                'features': {
+                    'opportunity_enrichment': True,
+                    'ai_scoring': True,
+                    'competitive_analysis': True,
+                    'market_intelligence': True,
+                    'bulk_processing': True,
+                    'compliance_analysis': True,
+                    'smart_alerts': True,
+                    'trend_analysis': True,
+                    'market_forecasting': True
+                },
                 'timestamp': datetime.now().isoformat()
             }
         })
