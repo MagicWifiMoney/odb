@@ -5,11 +5,12 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from flask import Flask, send_from_directory, jsonify
 from flask_cors import CORS
-from src.models.opportunity import db
+from src.models.opportunity import db, Opportunity
 from src.routes.user import user_bp
 from src.routes.opportunities import opportunities_bp
 from src.routes.scraping import scraping_bp
 from src.routes.rfp_enhanced import rfp_enhanced_bp
+from datetime import datetime, timedelta
 
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
 
@@ -40,9 +41,74 @@ def api_info():
             '/api/health', 
             '/api/opportunities',
             '/api/opportunities/stats',
-            '/api/sync/status'
+            '/api/sync/status',
+            '/api/init-data'
         ]
     })
+
+# Initialize database with sample data
+@app.route('/api/init-data', methods=['POST'])
+def init_sample_data():
+    try:
+        # Create sample opportunities
+        sample_opportunities = [
+            {
+                'title': 'IT Infrastructure Modernization',
+                'description': 'Large-scale IT infrastructure modernization project for federal agency',
+                'agency_name': 'Department of Defense',
+                'opportunity_number': 'DOD-IT-2024-001',
+                'award_amount': 15000000,
+                'due_date': datetime.now() + timedelta(days=30),
+                'status': 'open',
+                'location': 'Washington, DC',
+                'score': 85
+            },
+            {
+                'title': 'Cloud Migration Services',
+                'description': 'Cloud migration and modernization services for state government',
+                'agency_name': 'California State Government',
+                'opportunity_number': 'CA-CLOUD-2024-002',
+                'award_amount': 8500000,
+                'due_date': datetime.now() + timedelta(days=45),
+                'status': 'open',
+                'location': 'Sacramento, CA',
+                'score': 78
+            },
+            {
+                'title': 'Cybersecurity Assessment',
+                'description': 'Comprehensive cybersecurity assessment and implementation',
+                'agency_name': 'Department of Homeland Security',
+                'opportunity_number': 'DHS-SEC-2024-003',
+                'award_amount': 12000000,
+                'due_date': datetime.now() + timedelta(days=21),
+                'status': 'open',
+                'location': 'Multiple Locations',
+                'score': 92
+            }
+        ]
+        
+        added = 0
+        for opp_data in sample_opportunities:
+            existing = Opportunity.query.filter_by(opportunity_number=opp_data['opportunity_number']).first()
+            if not existing:
+                opportunity = Opportunity(**opp_data)
+                db.session.add(opportunity)
+                added += 1
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Added {added} sample opportunities',
+            'total_opportunities': Opportunity.query.count()
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 # Register blueprints
 app.register_blueprint(user_bp, url_prefix='/api')
