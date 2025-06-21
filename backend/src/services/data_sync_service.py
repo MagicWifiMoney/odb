@@ -2,7 +2,8 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional
 import logging
 from sqlalchemy.exc import IntegrityError
-from src.models.opportunity import db, Opportunity, DataSource, SyncLog
+from src.database import db
+from src.models.opportunity import Opportunity, DataSource, SyncLog
 from src.services.api_clients import APIClientFactory, APIError, RateLimitError
 from src.services.firecrawl_service import FirecrawlScrapeService
 from src.services.scoring_service import ScoringService

@@ -3,19 +3,53 @@ import sys
 # DON'T CHANGE THIS !!!
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from flask import Flask, send_from_directory, jsonify, request, g
+from flask import Flask, send_from_directory, jsonify, request
 from flask_cors import CORS
-from src.models.opportunity import db, Opportunity
-from src.routes.user import user_bp
-from src.routes.opportunities import opportunities_bp
-from src.routes.scraping import scraping_bp
-from src.routes.rfp_enhanced import rfp_enhanced_bp
-from src.routes.perplexity import perplexity_bp
-# Analytics service temporarily disabled
+from src.database import db
+from src.models.opportunity import Opportunity
+
+# Import blueprints with error handling
+try:
+    from src.routes.user import user_bp
+    print("✅ User blueprint imported")
+except Exception as e:
+    print(f"❌ User blueprint import failed: {e}")
+    user_bp = None
+
+try:
+    from src.routes.opportunities import opportunities_bp
+    print("✅ Opportunities blueprint imported")
+except Exception as e:
+    print(f"❌ Opportunities blueprint import failed: {e}")
+    opportunities_bp = None
+
+try:
+    from src.routes.scraping import scraping_bp
+    print("✅ Scraping blueprint imported")
+except Exception as e:
+    print(f"❌ Scraping blueprint import failed: {e}")
+    scraping_bp = None
+
+try:
+    from src.routes.rfp_enhanced import rfp_enhanced_bp
+    print("✅ RFP Enhanced blueprint imported")
+except Exception as e:
+    print(f"❌ RFP Enhanced blueprint import failed: {e}")
+    rfp_enhanced_bp = None
+
+try:
+    from src.routes.perplexity import perplexity_bp
+    print("✅ Perplexity blueprint imported")
+except Exception as e:
+    print(f"❌ Perplexity blueprint import failed: {e}")
+    perplexity_bp = None
+# Analytics service
 from datetime import datetime, timedelta
 import random
 import logging
 import time
+
+# Analytics temporarily removed for stability
 
 logger = logging.getLogger(__name__)
 
@@ -27,59 +61,56 @@ app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'asdf#FGSgvasgf$5$WGT')
 # Enable CORS for all routes
 CORS(app)
 
-# Analytics middleware
-@app.before_request
-def before_request():
-    g.start_time = time.time()
+# Analytics middleware removed for stability
 
 @app.after_request
 def after_request(response):
-    # Track API requests
-    if hasattr(g, 'start_time'):
-        duration_ms = (time.time() - g.start_time) * 1000
-        
-        # Only track API endpoints (not static files)
-        if request.path.startswith('/api/'):
-            analytics_service.track_api_request(
-                endpoint=request.path,
-                method=request.method,
-                status_code=response.status_code,
-                duration_ms=duration_ms,
-                user_id=getattr(g, 'user_id', None)
-            )
-    
+    # Analytics tracking removed for stability
     return response
 
-# Health endpoint for Railway deployment
-@app.route('/api/health')
-def health():
-    database_url = app.config.get('SQLALCHEMY_DATABASE_URI', 'unknown')
-    db_type = 'PostgreSQL' if 'postgresql' in database_url else 'SQLite'
-    
-    # Test database connection
-    db_status = 'unknown'
-    try:
-        from sqlalchemy import text
-        db.session.execute(text('SELECT 1'))
-        db_status = 'connected'
-    except Exception as e:
-        db_status = f'error: {str(e)[:100]}'
-    
-    # Track health check
-    analytics_service.track_custom_event('health_check', {
-        'database_status': db_status,
-        'database_type': db_type
-    })
-    
+# Minimal health endpoint that should always work
+@app.route('/api/health-simple')
+def health_simple():
     return jsonify({
         'status': 'healthy',
-        'message': 'Opportunity Dashboard API is running',
-        'database': db_type,
-        'database_status': db_status,
-        'database_url_prefix': database_url[:50] + '...' if len(database_url) > 50 else database_url,
-        'supabase_configured': bool(os.getenv('SUPABASE_URL')),
-        'analytics_enabled': analytics_service.is_enabled()
+        'message': 'Flask app is running'
     })
+
+# Health endpoint for Railway deployment - simplified for debugging
+@app.route('/api/health')
+def health():
+    try:
+        database_url = app.config.get('SQLALCHEMY_DATABASE_URI', 'unknown')
+        db_type = 'PostgreSQL' if 'postgresql' in database_url else 'SQLite'
+        
+        # Test database connection
+        db_status = 'unknown'
+        try:
+            from sqlalchemy import text
+            db.session.execute(text('SELECT 1'))
+            db_status = 'connected'
+        except Exception as e:
+            db_status = f'error: {str(e)[:100]}'
+        
+        # Analytics tracking removed for stability
+        
+        return jsonify({
+            'status': 'healthy',
+            'message': 'Opportunity Dashboard API is running',
+            'database': db_type,
+            'database_status': db_status,
+            'database_url_prefix': database_url[:50] + '...' if len(database_url) > 50 else database_url,
+            'supabase_configured': bool(os.getenv('SUPABASE_URL')),
+            'analytics_enabled': False
+        })
+        
+    except Exception as e:
+        # Return a basic response even if everything fails
+        return jsonify({
+            'status': 'error',
+            'message': f'Health check failed: {str(e)}',
+            'error': str(e)
+        }), 500
 
 # API info endpoint
 @app.route('/api')
@@ -180,12 +211,24 @@ def get_opportunities_simple():
             'message': 'Failed to fetch opportunities'
         }), 500
 
-# Register blueprints
-app.register_blueprint(user_bp, url_prefix='/api')
-app.register_blueprint(opportunities_bp, url_prefix='/api')
-app.register_blueprint(scraping_bp, url_prefix='/api')
-app.register_blueprint(rfp_enhanced_bp, url_prefix='/api')
-app.register_blueprint(perplexity_bp, url_prefix='/api')
+# Register blueprints - only if they imported successfully
+blueprints = [
+    (user_bp, 'user'),
+    (opportunities_bp, 'opportunities'), 
+    (scraping_bp, 'scraping'),
+    (rfp_enhanced_bp, 'rfp_enhanced'),
+    (perplexity_bp, 'perplexity')
+]
+
+for blueprint, name in blueprints:
+    if blueprint:
+        try:
+            app.register_blueprint(blueprint, url_prefix='/api')
+            print(f"✅ {name} blueprint registered successfully")
+        except Exception as e:
+            print(f"❌ {name} blueprint registration failed: {e}")
+    else:
+        print(f"⚠️ {name} blueprint skipped (import failed)")
 
 # Database configuration - support both PostgreSQL (Supabase) and SQLite
 database_url = os.getenv('DATABASE_URL', 'sqlite:///opportunities.db')

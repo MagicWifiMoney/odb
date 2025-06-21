@@ -1,7 +1,8 @@
 from flask import Blueprint, request, jsonify
 from datetime import datetime, date, timedelta
 from sqlalchemy import and_, or_, desc, asc
-from src.models.opportunity import db, Opportunity
+from src.database import db
+from src.models.opportunity import Opportunity
 from src.services.scoring_service import ScoringService
 from src.services.data_sync_service import DataSyncService
 import logging

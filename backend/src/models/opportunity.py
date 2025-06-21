@@ -1,8 +1,6 @@
-from flask_sqlalchemy import SQLAlchemy
+from src.database import db
 from datetime import datetime
 from sqlalchemy import Index
-
-db = SQLAlchemy()
 
 class Opportunity(db.Model):
     __tablename__ = 'opportunities'
