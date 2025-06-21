@@ -36,6 +36,11 @@ export default function Dashboard() {
   const [syncStatus, setSyncStatus] = useState(null)
   const [recentOpportunities, setRecentOpportunities] = useState([])
   const [loading, setLoading] = useState(true)
+  const [loadingSteps, setLoadingSteps] = useState({
+    opportunities: false,
+    stats: false,
+    sync: false
+  })
   const { toast } = useToast()
 
   useEffect(() => {
@@ -46,23 +51,25 @@ export default function Dashboard() {
     try {
       setLoading(true)
       
-      // Debug: Log API base URL
-      console.log('API Base URL:', import.meta.env.VITE_API_BASE_URL)
-      
       console.log('Loading dashboard data...')
       
-      // Load each API call sequentially to see which one fails
-      console.log('1. Loading opportunities...')
-      const opportunitiesData = await apiClient.getOpportunities()
-      console.log('Opportunities response:', opportunitiesData)
+      // Make API calls in parallel for better performance
+      const promises = [
+        apiClient.getDashboardOpportunities({ per_page: 20 }).then(data => {
+          setLoadingSteps(prev => ({ ...prev, opportunities: true }))
+          return data
+        }),
+        apiClient.getOpportunityStats().then(data => {
+          setLoadingSteps(prev => ({ ...prev, stats: true }))
+          return data
+        }),
+        apiClient.getSyncStatus().then(data => {
+          setLoadingSteps(prev => ({ ...prev, sync: true }))
+          return data
+        })
+      ]
       
-      console.log('2. Loading stats...')
-      const statsData = await apiClient.getOpportunityStats()
-      console.log('Stats response:', statsData)
-      
-      console.log('3. Loading sync status...')
-      const syncData = await apiClient.getSyncStatus()
-      console.log('Sync response:', syncData)
+      const [opportunitiesData, statsData, syncData] = await Promise.all(promises)
       
       console.log('All API calls completed successfully!')
       
@@ -114,10 +121,17 @@ export default function Dashboard() {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold">Dashboard</h1>
+          <div>
+            <h1 className="text-3xl font-bold">Dashboard</h1>
+            <p className="text-muted-foreground">
+              {!loadingSteps.opportunities && !loadingSteps.stats && !loadingSteps.sync 
+                ? 'Loading dashboard data...' 
+                : 'Almost ready...'}
+            </p>
+          </div>
           <Button disabled>
             <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-            Loading...
+            {Object.values(loadingSteps).filter(Boolean).length}/3 loaded
           </Button>
         </div>
         
@@ -125,14 +139,27 @@ export default function Dashboard() {
           {[...Array(4)].map((_, i) => (
             <Card key={i}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Loading...</CardTitle>
+                <CardTitle className="text-sm font-medium">
+                  {loadingSteps.stats ? 'Loading...' : 'Waiting...'}
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="h-8 bg-muted animate-pulse rounded"></div>
+                <div className={`h-8 rounded transition-colors ${
+                  loadingSteps.stats ? 'bg-blue-100 animate-pulse' : 'bg-muted animate-pulse'
+                }`}></div>
               </CardContent>
             </Card>
           ))}
         </div>
+        
+        {loadingSteps.opportunities && (
+          <div className="mt-4 p-4 bg-green-50 dark:bg-green-900/10 rounded-lg border border-green-200 dark:border-green-800">
+            <div className="flex items-center">
+              <CheckCircle className="w-5 h-5 text-green-600 mr-2" />
+              <p className="text-green-800 dark:text-green-200">Opportunities loaded successfully</p>
+            </div>
+          </div>
+        )}
       </div>
     )
   }

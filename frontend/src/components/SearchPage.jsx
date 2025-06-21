@@ -18,7 +18,7 @@ export default function SearchPage() {
     min_score: [0],
     max_value: '',
     min_value: '',
-    due_within_days: '',
+    due_within_days: 'any',
     source_type: 'all',
     location: '',
     category: 'all'
@@ -45,7 +45,7 @@ export default function SearchPage() {
       const searchData = {
         keywords: searchForm.keywords.split(',').map(k => k.trim()).filter(k => k),
         min_score: searchForm.min_score[0],
-        due_within_days: searchForm.due_within_days ? parseInt(searchForm.due_within_days) : undefined,
+        due_within_days: searchForm.due_within_days !== 'any' ? parseInt(searchForm.due_within_days) : undefined,
         source_type: searchForm.source_type !== 'all' ? searchForm.source_type : undefined,
         agency_name: searchForm.agency_name || undefined,
         location: searchForm.location || undefined,
@@ -87,7 +87,7 @@ export default function SearchPage() {
       min_score: [0],
       max_value: '',
       min_value: '',
-      due_within_days: '',
+      due_within_days: 'any',
       source_type: 'all',
       location: '',
       category: 'all'
@@ -198,7 +198,7 @@ export default function SearchPage() {
                     <SelectValue placeholder="Any time" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Any time</SelectItem>
+                    <SelectItem value="any">Any time</SelectItem>
                     <SelectItem value="7">7 days</SelectItem>
                     <SelectItem value="14">14 days</SelectItem>
                     <SelectItem value="30">30 days</SelectItem>

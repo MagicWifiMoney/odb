@@ -34,6 +34,15 @@ class handler(BaseHTTPRequestHandler):
         self.send_header('Access-Control-Allow-Origin', '*')
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
         self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        
+        # Add caching headers for better performance
+        if path in ['/opportunities', '/opportunities/stats']:
+            self.send_header('Cache-Control', 'public, max-age=300')  # Cache for 5 minutes
+        elif path == '/sync/status':
+            self.send_header('Cache-Control', 'public, max-age=60')   # Cache for 1 minute
+        else:
+            self.send_header('Cache-Control', 'no-cache')
+            
         self.end_headers()
         
         # Route handling
@@ -147,6 +156,17 @@ class handler(BaseHTTPRequestHandler):
                 'avg_score': round(avg_score, 1),
                 'by_type': by_type,
                 'by_agency': by_agency
+            }
+        elif path == '/opportunities/search':
+            # Redirect GET requests to POST for search
+            response = {
+                'error': 'Method Not Allowed',
+                'message': 'Search endpoint requires POST request with search criteria',
+                'example': {
+                    'keywords': ['software', 'development'],
+                    'min_score': 70,
+                    'source_type': 'federal_contract'
+                }
             }
         elif path == '/scraping/sources':
             # Get available Firecrawl scraping sources
@@ -335,6 +355,35 @@ class handler(BaseHTTPRequestHandler):
                         'error': str(e),
                         'message': 'Firecrawl service test failed'
                     }
+        elif path == '/opportunities/search':
+            # Handle search requests
+            try:
+                # Read the request body
+                content_length = int(self.headers.get('Content-Length', 0))
+                if content_length > 0:
+                    post_data = self.rfile.read(content_length)
+                    search_data = json.loads(post_data.decode('utf-8'))
+                else:
+                    search_data = {}
+                
+                # Get all opportunities
+                opportunities = self.get_real_opportunities()
+                
+                # Apply search filters
+                filtered_opportunities = self.filter_opportunities(opportunities, search_data)
+                
+                response = {
+                    'opportunities': filtered_opportunities,
+                    'total_found': len(filtered_opportunities),
+                    'message': f'Found {len(filtered_opportunities)} opportunities matching your criteria'
+                }
+            except Exception as e:
+                response = {
+                    'error': 'Search failed',
+                    'message': str(e),
+                    'opportunities': [],
+                    'total_found': 0
+                }
         else:
             response = {
                 'error': 'Not Found',
@@ -343,6 +392,97 @@ class handler(BaseHTTPRequestHandler):
         
         self.wfile.write(json.dumps(response).encode())
     
+    def filter_opportunities(self, opportunities, search_data):
+        """Filter opportunities based on search criteria"""
+        filtered = []
+        
+        for opp in opportunities:
+            # Apply filters
+            if not self.matches_search_criteria(opp, search_data):
+                continue
+            filtered.append(opp)
+        
+        # Sort by score (descending)
+        filtered.sort(key=lambda x: x.get('total_score', 0), reverse=True)
+        
+        # Limit results
+        return filtered[:100]
+    
+    def matches_search_criteria(self, opportunity, criteria):
+        """Check if an opportunity matches the search criteria"""
+        # Keywords search
+        keywords = criteria.get('keywords', [])
+        if keywords:
+            title = opportunity.get('title', '').lower()
+            description = opportunity.get('description', '').lower()
+            
+            keyword_match = False
+            for keyword in keywords:
+                keyword = keyword.lower().strip()
+                if keyword in title or keyword in description:
+                    keyword_match = True
+                    break
+            
+            if not keyword_match:
+                return False
+        
+        # Agency filter
+        agency_name = criteria.get('agency_name')
+        if agency_name:
+            opp_agency = opportunity.get('agency_name', '').lower()
+            if agency_name.lower() not in opp_agency:
+                return False
+        
+        # Source type filter
+        source_type = criteria.get('source_type')
+        if source_type:
+            if opportunity.get('source_type') != source_type:
+                return False
+        
+        # Location filter
+        location = criteria.get('location')
+        if location:
+            opp_location = opportunity.get('location', '').lower()
+            if location.lower() not in opp_location:
+                return False
+        
+        # Score filter
+        min_score = criteria.get('min_score')
+        if min_score is not None:
+            if opportunity.get('total_score', 0) < min_score:
+                return False
+        
+        # Value filters
+        min_value = criteria.get('min_value')
+        max_value = criteria.get('max_value')
+        opp_value = opportunity.get('estimated_value')
+        
+        if min_value is not None and opp_value is not None:
+            if opp_value < min_value:
+                return False
+        
+        if max_value is not None and opp_value is not None:
+            if opp_value > max_value:
+                return False
+        
+        # Due date filter
+        due_within_days = criteria.get('due_within_days')
+        if due_within_days is not None:
+            due_date = opportunity.get('due_date')
+            if due_date:
+                try:
+                    from datetime import datetime, timedelta
+                    due_date_obj = datetime.fromisoformat(due_date.replace('Z', '+00:00'))
+                    cutoff_date = datetime.now() + timedelta(days=due_within_days)
+                    
+                    if due_date_obj > cutoff_date or due_date_obj < datetime.now():
+                        return False
+                except:
+                    # Skip opportunities with invalid dates
+                    return False
+        
+        return True
+
     def get_real_opportunities(self):
         """Fetch real opportunities from all available sources"""
         opportunities = []

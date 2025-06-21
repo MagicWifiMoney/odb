@@ -4,7 +4,7 @@
   "framework": "vite",
   "installCommand": "npm install --legacy-peer-deps",
   "env": {
-    "VITE_API_BASE_URL": "https://web-production-ba1c.up.railway.app/api"
+    "VITE_API_BASE_URL": "https://api.yourdomain.com/api"
   },
   "rewrites": [
     {

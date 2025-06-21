@@ -13,9 +13,11 @@ class ApiClient {
   async request(endpoint, options = {}) {
     const url = `${this.baseURL}${endpoint}`
     
-    // Create abort controller with timeout
+    // Create abort controller with shorter timeout for dashboard
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    const isDashboardCall = endpoint.includes('/opportunities') || endpoint.includes('/stats') || endpoint.includes('/sync/status')
+    const timeoutDuration = isDashboardCall ? 15000 : 30000; // 15s for dashboard, 30s for others
+    const timeoutId = setTimeout(() => controller.abort(), timeoutDuration);
     
     const config = {
       headers: {
@@ -57,7 +59,7 @@ class ApiClient {
       
       if (error.name === 'AbortError') {
         console.error(`Request timeout for ${endpoint}`)
-        throw new Error('Request timed out after 30 seconds')
+        throw new Error(`Request timed out after ${timeoutDuration/1000} seconds`)
       }
       
       console.error(`API request failed: ${endpoint}`, error)
@@ -67,6 +69,12 @@ class ApiClient {
 
   // Opportunities endpoints
   async getOpportunities(params = {}) {
+    const queryString = new URLSearchParams(params).toString()
+    return this.request(`/opportunities-working${queryString ? `?${queryString}` : ''}`)
+  }
+
+  // Optimized endpoint for dashboard - loads minimal data
+  async getDashboardOpportunities(params = { per_page: 20 }) {
     const queryString = new URLSearchParams(params).toString()
     return this.request(`/opportunities-working${queryString ? `?${queryString}` : ''}`)
   }
