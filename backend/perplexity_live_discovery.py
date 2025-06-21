@@ -417,6 +417,163 @@ class PerplexityLiveDiscovery:
         
         return None
     
+    def get_financial_market_data(self, query: str) -> Dict[str, Any]:
+        """Get financial and market data for government contracting"""
+        print(f"💰 Querying financial market data: {query}")
+        
+        prompt = f"""
+        Provide current financial and market data for government contracting related to: {query}
+        
+        Focus on:
+        - Current market trends and financial indicators
+        - Government spending patterns and budget allocations
+        - Contract award statistics and values
+        - Economic factors affecting procurement
+        - Industry-specific financial insights
+        - Market competition and pricing trends
+        
+        Include specific numbers, percentages, dollar amounts, and recent data.
+        Cite reliable sources like USASpending.gov, CBO, GAO, industry reports.
+        
+        Format response with clear sections and actionable insights.
+        """
+        
+        result = self.query_perplexity(prompt, max_tokens=800)
+        
+        if result.get('choices'):
+            content = result['choices'][0]['message']['content']
+            citations = result.get('citations', [])
+            
+            return {
+                'query': query,
+                'financial_data': content,
+                'citations': citations,
+                'generated_at': datetime.now().isoformat(),
+                'data_type': 'financial_market_analysis'
+            }
+        else:
+            return {'error': 'No financial data available'}
+    
+    def get_real_time_metrics(self) -> Dict[str, Any]:
+        """Get real-time financial metrics for government contracting"""
+        print("📊 Fetching real-time financial metrics...")
+        
+        prompt = f"""
+        Provide current real-time financial metrics for the government contracting market:
+        
+        1. Average federal contract value (last 30 days)
+        2. Total contract awards this month vs last month (with percentage change)
+        3. Small business set-aside participation rate
+        4. Top 5 spending agencies by dollar volume
+        5. Contract competition levels (average bidders per opportunity)
+        6. Award processing times and delays
+        7. Budget execution rates by major agencies
+        8. Sector-wise spending distribution
+        
+        Include exact numbers with percentage changes where possible.
+        Use recent data from USASpending.gov, SAM.gov, and official sources.
+        Highlight any significant trends or anomalies.
+        """
+        
+        result = self.query_perplexity(prompt, max_tokens=900)
+        
+        if result.get('choices'):
+            content = result['choices'][0]['message']['content']
+            citations = result.get('citations', [])
+            
+            return {
+                'metrics': content,
+                'citations': citations,
+                'timestamp': datetime.now().isoformat(),
+                'metrics_type': 'real_time_financial'
+            }
+        else:
+            return {'error': 'No real-time metrics available'}
+    
+    def analyze_sector_performance(self, sector: str = None) -> Dict[str, Any]:
+        """Analyze financial performance of specific sectors"""
+        sector_focus = f" for the {sector} sector" if sector else " across all sectors"
+        print(f"📈 Analyzing sector performance{sector_focus}...")
+        
+        prompt = f"""
+        Analyze current financial performance and trends{sector_focus} in government contracting:
+        
+        1. Total spending and growth rates (YoY and QoQ)
+        2. Average contract values and deal sizes
+        3. Market share by major contractors
+        4. Profit margins and pricing trends
+        5. Win rates and competition intensity
+        6. Upcoming budget allocations and priorities
+        7. Key financial risks and opportunities
+        8. Strategic recommendations for market entry/expansion
+        
+        Provide specific financial data with sources.
+        Include forward-looking insights and market predictions.
+        Focus on actionable intelligence for business strategy.
+        """
+        
+        result = self.query_perplexity(prompt, max_tokens=1000)
+        
+        if result.get('choices'):
+            analysis = result['choices'][0]['message']['content']
+            citations = result.get('citations', [])
+            
+            return {
+                'sector': sector or 'all_sectors',
+                'performance_analysis': analysis,
+                'citations': citations,
+                'analysis_date': datetime.now().isoformat(),
+                'analysis_type': 'sector_financial_performance'
+            }
+        else:
+            return {'error': 'No sector analysis available'}
+    
+    def forecast_market_conditions(self, timeframe: str = "90 days") -> Dict[str, Any]:
+        """Forecast market conditions and financial trends"""
+        print(f"🔮 Forecasting market conditions for next {timeframe}...")
+        
+        prompt = f"""
+        Forecast government contracting market conditions for the next {timeframe}:
+        
+        Economic Factors:
+        - Federal budget outlook and appropriations
+        - Interest rates and inflation impacts
+        - Economic indicators affecting government spending
+        - Political and policy changes affecting procurement
+        
+        Market Predictions:
+        - Expected contract volume and values
+        - Sector growth/decline forecasts
+        - Competition level changes
+        - Pricing trend predictions
+        - New opportunity types emerging
+        
+        Financial Indicators:
+        - Budget execution patterns
+        - Agency spending velocity
+        - Small business participation trends
+        - International trade impacts
+        
+        Provide specific predictions with confidence levels and supporting rationale.
+        Include risk factors and scenario analysis.
+        """
+        
+        result = self.query_perplexity(prompt, max_tokens=1000)
+        
+        if result.get('choices'):
+            forecast = result['choices'][0]['message']['content']
+            citations = result.get('citations', [])
+            
+            return {
+                'forecast_timeframe': timeframe,
+                'market_forecast': forecast,
+                'citations': citations,
+                'forecast_date': datetime.now().isoformat(),
+                'forecast_type': 'market_conditions'
+            }
+        else:
+            return {'error': 'No market forecast available'}
+    
     def run_full_ai_discovery(self) -> Dict[str, Any]:
         """Run complete AI-powered discovery session"""
         print("🤖 Starting Perplexity AI Discovery Session")
@@ -443,11 +600,21 @@ class PerplexityLiveDiscovery:
             enhanced_count = self.enhance_existing_opportunities()
             results['opportunities_enhanced'] = enhanced_count
             
+            # 5. Get financial metrics (new)
+            financial_metrics = self.get_real_time_metrics()
+            results['financial_metrics'] = bool(financial_metrics.get('metrics'))
+            
+            # 6. Market forecast (new)
+            market_forecast = self.forecast_market_conditions()
+            results['market_forecast'] = bool(market_forecast.get('market_forecast'))
+            
             # Save market intelligence
             if market_analysis or predictions:
                 intelligence_report = {
                     'market_trends': market_analysis,
                     'opportunity_predictions': predictions,
+                    'financial_metrics': financial_metrics,
+                    'market_forecast': market_forecast,
                     'generated_at': datetime.now().isoformat(),
                     'report_type': 'ai_market_intelligence'
                 }
@@ -461,6 +628,8 @@ class PerplexityLiveDiscovery:
             print(f"   📈 Market analysis: {'✅' if results['market_analysis'] else '❌'}")
             print(f"   🔮 Predictions: {'✅' if results['predictions_generated'] else '❌'}")
             print(f"   🧠 Enhanced opportunities: {results['opportunities_enhanced']}")
+            print(f"   💰 Financial metrics: {'✅' if results['financial_metrics'] else '❌'}")
+            print(f"   🔮 Market forecast: {'✅' if results['market_forecast'] else '❌'}")
             
         except Exception as e:
             print(f"❌ AI discovery session failed: {e}")

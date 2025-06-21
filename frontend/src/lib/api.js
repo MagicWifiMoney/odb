@@ -137,6 +137,31 @@ class ApiClient {
       body: JSON.stringify({ url }),
     })
   }
+
+  // Perplexity AI endpoints
+  async searchFinancialData(query) {
+    return this.request('/perplexity/search', {
+      method: 'POST',
+      body: JSON.stringify({ query }),
+    })
+  }
+
+  async getMarketAnalysis() {
+    return this.request('/perplexity/market-analysis')
+  }
+
+  async getFinancialMetrics() {
+    return this.request('/perplexity/financial-metrics')
+  }
+
+  async predictOpportunities(sector = null) {
+    const params = sector ? `?sector=${encodeURIComponent(sector)}` : ''
+    return this.request(`/perplexity/predict-opportunities${params}`)
+  }
+
+  async getPerplexityStatus() {
+    return this.request('/perplexity/status')
+  }
 }
 
 // Create and export API client instance
