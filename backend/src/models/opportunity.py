@@ -77,6 +77,7 @@ class SyncLog(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     source_name = db.Column(db.String(100), nullable=False)
+    sync_type = db.Column(db.String(50), nullable=False, default='api')
     sync_start = db.Column(db.DateTime, nullable=False)
     sync_end = db.Column(db.DateTime)
     status = db.Column(db.String(20), default='running')
@@ -84,7 +85,7 @@ class SyncLog(db.Model):
     records_added = db.Column(db.Integer, default=0)
     records_updated = db.Column(db.Integer, default=0)
     error_message = db.Column(db.Text)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    errors_count = db.Column(db.Integer, default=0)
 
 
 # Create indexes for better performance

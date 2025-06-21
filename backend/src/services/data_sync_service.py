@@ -126,7 +126,8 @@ class DataSyncService:
         
         # Create sync log
         sync_log = SyncLog(
-            source_id=self._get_or_create_data_source(source_name, 'scraper').id,
+            source_name=source_name,
+            sync_type='scraper',
             sync_start=datetime.utcnow(),
             status='running'
         )
@@ -206,7 +207,8 @@ class DataSyncService:
         
         # Create sync log
         sync_log = SyncLog(
-            source_id=self._get_or_create_data_source(source_name).id,
+            source_name=source_name,
+            sync_type='api',
             sync_start=datetime.utcnow(),
             status='running'
         )
@@ -408,10 +410,7 @@ class DataSyncService:
             
             source = DataSource(
                 name=source_name,
-                type=config.get('type', source_type),
-                base_url=config.get('base_url'),
-                api_key_required=config.get('api_key_required', False),
-                rate_limit_per_hour=config.get('rate_limit_per_hour', 1000),
+                source_type=config.get('type', source_type),
                 is_active=True
             )
             
