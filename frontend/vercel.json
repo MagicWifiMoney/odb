@@ -2,7 +2,7 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "framework": "vite",
-  "installCommand": "npm install",
+  "installCommand": "npm install --legacy-peer-deps",
   "env": {
     "VITE_API_BASE_URL": "https://web-production-ba1c.up.railway.app/api"
   },
