@@ -9,6 +9,7 @@ import SearchPage from '@/components/SearchPage'
 import PerplexityPage from '@/components/PerplexityPage'
 import SettingsPage from '@/components/SettingsPage'
 import SyncStatus from '@/components/SyncStatus'
+import StagingBanner from '@/components/StagingBanner'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { LoginPage } from '@/pages/LoginPage'
@@ -45,6 +46,9 @@ function App() {
   const AppLayout = () => {
     return (
       <div className={`min-h-screen bg-background text-foreground ${darkMode ? 'dark' : ''}`}>
+        {/* Staging Banner - shows only in staging environment */}
+        <StagingBanner />
+        
         <div className="flex">
           <Sidebar 
             isOpen={sidebarOpen} 
