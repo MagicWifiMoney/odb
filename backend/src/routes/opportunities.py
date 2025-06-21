@@ -41,9 +41,9 @@ def get_opportunities():
         if source_type:
             query = query.filter(Opportunity.source_type == source_type)
         
-        # Apply status filter for live data
-        if status and status != 'all':
-            query = query.filter(Opportunity.status == status)
+        # Apply status filter for live data (skip for now since we don't have status field)
+        # if status and status != 'all':
+        #     query = query.filter(Opportunity.status == status)
         
         if min_score is not None:
             query = query.filter(Opportunity.total_score >= min_score)
@@ -117,8 +117,7 @@ def get_opportunities():
                 'value_score': opp.value_score,
                 'competition_score': opp.competition_score,
                 'location': opp.location,
-                'opportunity_number': opp.opportunity_number,
-                'status': getattr(opp, 'status', 'active')
+                'opportunity_number': opp.opportunity_number
             })
         
         # Calculate pagination info
