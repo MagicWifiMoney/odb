@@ -344,5 +344,103 @@ def init_large_sample_data():
         logger.error(f"Large sample data creation error: {str(e)}")
         return jsonify({'error': 'Failed to create large sample data'}), 500
 
+# Performance-optimized opportunities endpoint for large datasets
+@app.route('/api/opportunities-fast', methods=['GET'])
+def get_opportunities_fast():
+    """Fast opportunities endpoint optimized for large datasets"""
+    try:
+        # Get query parameters
+        page = request.args.get('page', 1, type=int)
+        per_page = min(request.args.get('per_page', 50, type=int), 200)
+        sort_by = request.args.get('sort_by', 'total_score')
+        sort_order = request.args.get('sort_order', 'desc')
+        search = request.args.get('search', '')
+        
+        # Build base query with selective loading
+        query = db.session.query(
+            Opportunity.id,
+            Opportunity.title,
+            Opportunity.agency_name,
+            Opportunity.estimated_value,
+            Opportunity.due_date,
+            Opportunity.posted_date,
+            Opportunity.source_type,
+            Opportunity.source_name,
+            Opportunity.total_score,
+            Opportunity.relevance_score,
+            Opportunity.urgency_score,
+            Opportunity.value_score,
+            Opportunity.competition_score,
+            Opportunity.location,
+            Opportunity.opportunity_number
+        )
+        
+        # Apply search filter
+        if search:
+            search_filter = f"%{search}%"
+            query = query.filter(
+                db.or_(
+                    Opportunity.title.ilike(search_filter),
+                    Opportunity.agency_name.ilike(search_filter),
+                    Opportunity.description.ilike(search_filter)
+                )
+            )
+        
+        # Apply sorting
+        sort_column = getattr(Opportunity, sort_by, Opportunity.total_score)
+        if sort_order.lower() == 'desc':
+            query = query.order_by(sort_column.desc())
+        else:
+            query = query.order_by(sort_column.asc())
+        
+        # Get total count efficiently
+        total_count = query.count()
+        
+        # Apply pagination
+        offset = (page - 1) * per_page
+        opportunities = query.offset(offset).limit(per_page).all()
+        
+        # Format results
+        results = []
+        for opp in opportunities:
+            results.append({
+                'id': opp.id,
+                'title': opp.title,
+                'agency_name': opp.agency_name,
+                'estimated_value': opp.estimated_value,
+                'due_date': opp.due_date.isoformat() if opp.due_date else None,
+                'posted_date': opp.posted_date.isoformat() if opp.posted_date else None,
+                'source_type': opp.source_type,
+                'source_name': opp.source_name,
+                'total_score': opp.total_score,
+                'relevance_score': opp.relevance_score,
+                'urgency_score': opp.urgency_score,
+                'value_score': opp.value_score,
+                'competition_score': opp.competition_score,
+                'location': opp.location,
+                'opportunity_number': opp.opportunity_number
+            })
+        
+        # Calculate pagination info
+        total_pages = (total_count + per_page - 1) // per_page
+        
+        return jsonify({
+            'opportunities': results,
+            'pagination': {
+                'page': page,
+                'per_page': per_page,
+                'total': total_count,
+                'pages': total_pages,
+                'has_next': page < total_pages,
+                'has_prev': page > 1
+            },
+            'total': total_count,
+            'pages': total_pages
+        })
+        
+    except Exception as e:
+        logger.error(f"Fast opportunities fetch error: {str(e)}")
+        return jsonify({'error': 'Failed to fetch opportunities'}), 500
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001, debug=True)

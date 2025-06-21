@@ -36,7 +36,12 @@ export default function OpportunityList() {
   const { toast } = useToast()
 
   useEffect(() => {
-    loadOpportunities()
+    // Debounce search to avoid too many API calls
+    const timeoutId = setTimeout(() => {
+      loadOpportunities()
+    }, searchTerm ? 300 : 0) // 300ms delay for search, immediate for other filters
+    
+    return () => clearTimeout(timeoutId)
   }, [searchTerm, sortBy, sortOrder, statusFilter, sourceFilter, pagination.page]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadOpportunities = async () => {
@@ -54,7 +59,13 @@ export default function OpportunityList() {
       if (statusFilter !== 'all') params.status = statusFilter
       if (sourceFilter !== 'all') params.source_type = sourceFilter
 
+      console.log('Loading opportunities with params:', params)
+      const startTime = performance.now()
+      
       const data = await apiClient.getOpportunities(params)
+      
+      const endTime = performance.now()
+      console.log(`Opportunities loaded in ${endTime - startTime}ms`)
       
       setOpportunities(data.opportunities || [])
       setPagination({
@@ -66,8 +77,15 @@ export default function OpportunityList() {
       console.error('Failed to load opportunities:', error)
       toast({
         title: "Error",
-        description: "Failed to load opportunities",
+        description: `Failed to load opportunities: ${error.message}`,
         variant: "destructive",
+      })
+      // Set empty state on error
+      setOpportunities([])
+      setPagination({
+        ...pagination,
+        total: 0,
+        pages: 0
       })
     } finally {
       setLoading(false)
