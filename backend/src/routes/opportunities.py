@@ -92,26 +92,50 @@ def get_opportunities():
             # Default sort by total_score descending
             query = query.order_by(desc(Opportunity.total_score))
         
-        # Paginate
-        pagination = query.paginate(
-            page=page, 
-            per_page=per_page, 
-            error_out=False
-        )
+        # Get total count efficiently
+        total_count = query.count()
         
-        # Convert to dict
-        opportunities = [opp.to_dict() for opp in pagination.items]
+        # Apply pagination
+        offset = (page - 1) * per_page
+        opportunities_data = query.offset(offset).limit(per_page).all()
+        
+        # Convert to dict with selective fields for performance
+        opportunities = []
+        for opp in opportunities_data:
+            opportunities.append({
+                'id': opp.id,
+                'title': opp.title,
+                'agency_name': opp.agency_name,
+                'estimated_value': opp.estimated_value,
+                'due_date': opp.due_date.isoformat() if opp.due_date else None,
+                'posted_date': opp.posted_date.isoformat() if opp.posted_date else None,
+                'source_type': opp.source_type,
+                'source_name': opp.source_name,
+                'total_score': opp.total_score,
+                'relevance_score': opp.relevance_score,
+                'urgency_score': opp.urgency_score,
+                'value_score': opp.value_score,
+                'competition_score': opp.competition_score,
+                'location': opp.location,
+                'opportunity_number': opp.opportunity_number,
+                'status': getattr(opp, 'status', 'active')
+            })
+        
+        # Calculate pagination info
+        total_pages = (total_count + per_page - 1) // per_page
         
         return jsonify({
             'opportunities': opportunities,
             'pagination': {
                 'page': page,
                 'per_page': per_page,
-                'total': pagination.total,
-                'pages': pagination.pages,
-                'has_next': pagination.has_next,
-                'has_prev': pagination.has_prev
-            }
+                'total': total_count,
+                'pages': total_pages,
+                'has_next': page < total_pages,
+                'has_prev': page > 1
+            },
+            'total': total_count,
+            'pages': total_pages
         })
         
     except Exception as e:
