@@ -442,5 +442,114 @@ def get_opportunities_fast():
         logger.error(f"Fast opportunities fetch error: {str(e)}")
         return jsonify({'error': 'Failed to fetch opportunities'}), 500
 
+# Debug endpoint for testing large dataset queries
+@app.route('/api/opportunities-debug', methods=['GET'])
+def debug_opportunities():
+    """Debug endpoint to test opportunities query"""
+    try:
+        # Simple count first
+        total_count = db.session.query(Opportunity).count()
+        
+        # Get first 10 opportunities with minimal fields
+        opportunities = db.session.query(
+            Opportunity.id,
+            Opportunity.title,
+            Opportunity.agency_name,
+            Opportunity.total_score
+        ).limit(10).all()
+        
+        results = []
+        for opp in opportunities:
+            results.append({
+                'id': opp.id,
+                'title': opp.title,
+                'agency_name': opp.agency_name,
+                'total_score': opp.total_score
+            })
+        
+        return jsonify({
+            'total_count': total_count,
+            'sample_opportunities': results,
+            'message': 'Debug query successful'
+        })
+        
+    except Exception as e:
+        logger.error(f"Debug query error: {str(e)}")
+        return jsonify({
+            'error': str(e),
+            'error_type': type(e).__name__
+        }), 500
+
+# Simple working opportunities endpoint
+@app.route('/api/opportunities-working', methods=['GET'])
+def get_opportunities_working():
+    """Simple working opportunities endpoint for large datasets"""
+    try:
+        # Get query parameters
+        page = request.args.get('page', 1, type=int)
+        per_page = min(request.args.get('per_page', 50, type=int), 200)
+        search = request.args.get('search', '')
+        
+        # Build base query
+        query = db.session.query(Opportunity)
+        
+        # Apply search if provided
+        if search:
+            search_filter = f"%{search}%"
+            query = query.filter(
+                db.or_(
+                    Opportunity.title.ilike(search_filter),
+                    Opportunity.agency_name.ilike(search_filter)
+                )
+            )
+        
+        # Order by score
+        query = query.order_by(Opportunity.total_score.desc())
+        
+        # Get total count
+        total_count = query.count()
+        
+        # Apply pagination
+        offset = (page - 1) * per_page
+        opportunities_data = query.offset(offset).limit(per_page).all()
+        
+        # Convert to simplified dict format
+        opportunities = []
+        for opp in opportunities_data:
+            opportunities.append({
+                'id': opp.id,
+                'title': opp.title,
+                'agency_name': opp.agency_name,
+                'estimated_value': opp.estimated_value,
+                'due_date': opp.due_date.isoformat() if opp.due_date else None,
+                'posted_date': opp.posted_date.isoformat() if opp.posted_date else None,
+                'source_type': opp.source_type,
+                'source_name': opp.source_name,
+                'total_score': opp.total_score,
+                'location': opp.location,
+                'opportunity_number': opp.opportunity_number
+            })
+        
+        # Calculate pagination info
+        total_pages = (total_count + per_page - 1) // per_page
+        
+        return jsonify({
+            'opportunities': opportunities,
+            'pagination': {
+                'page': page,
+                'per_page': per_page,
+                'total': total_count,
+                'pages': total_pages,
+                'has_next': page < total_pages,
+                'has_prev': page > 1
+            },
+            'total': total_count,
+            'pages': total_pages
+        })
+        
+    except Exception as e:
+        logger.error(f"Working opportunities error: {str(e)}")
+        return jsonify({'error': f'Failed to fetch opportunities: {str(e)}'}), 500
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001, debug=True)

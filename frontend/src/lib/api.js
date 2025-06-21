@@ -68,7 +68,7 @@ class ApiClient {
   // Opportunities endpoints
   async getOpportunities(params = {}) {
     const queryString = new URLSearchParams(params).toString()
-    return this.request(`/opportunities${queryString ? `?${queryString}` : ''}`)
+    return this.request(`/opportunities-working${queryString ? `?${queryString}` : ''}`)
   }
 
   async getOpportunity(id) {
