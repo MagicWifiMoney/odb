@@ -16,7 +16,7 @@ def get_opportunities():
     try:
         # Get query parameters
         page = request.args.get('page', 1, type=int)
-        per_page = min(request.args.get('per_page', 20, type=int), 100)  # Max 100 per page
+        per_page = min(request.args.get('per_page', 50, type=int), 200)  # Max 200 per page for large datasets
         
         # Filtering parameters
         source_type = request.args.get('source_type')

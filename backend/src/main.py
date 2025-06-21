@@ -3,7 +3,7 @@ import sys
 # DON'T CHANGE THIS !!!
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from flask import Flask, send_from_directory, jsonify
+from flask import Flask, send_from_directory, jsonify, request
 from flask_cors import CORS
 from src.models.opportunity import db, Opportunity
 from src.routes.user import user_bp
@@ -11,6 +11,10 @@ from src.routes.opportunities import opportunities_bp
 from src.routes.scraping import scraping_bp
 from src.routes.rfp_enhanced import rfp_enhanced_bp
 from datetime import datetime, timedelta
+import random
+import logging
+
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
 
@@ -195,6 +199,150 @@ def serve_index():
     else:
         return "index.html not found", 404
 
+# Bulk insert endpoint for scaling
+@app.route('/api/bulk-insert', methods=['POST'])
+def bulk_insert_opportunities():
+    """Bulk insert opportunities for scaling"""
+    try:
+        data = request.get_json()
+        opportunities_data = data.get('opportunities', [])
+        
+        if not opportunities_data:
+            return jsonify({'error': 'No opportunities provided'}), 400
+        
+        added_count = 0
+        
+        for opp_data in opportunities_data:
+            try:
+                # Create opportunity object
+                opportunity = Opportunity(
+                    title=opp_data.get('title', '')[:500],
+                    description=opp_data.get('description', ''),
+                    agency_name=opp_data.get('agency_name', '')[:200],
+                    opportunity_number=opp_data.get('opportunity_number'),
+                    estimated_value=opp_data.get('estimated_value'),
+                    posted_date=datetime.fromisoformat(opp_data['posted_date'].replace('Z', '+00:00')) if opp_data.get('posted_date') else None,
+                    due_date=datetime.fromisoformat(opp_data['due_date'].replace('Z', '+00:00')) if opp_data.get('due_date') else None,
+                    source_type=opp_data.get('source_type', 'synthetic'),
+                    source_name=opp_data.get('source_name', 'Bulk Insert'),
+                    location=opp_data.get('location'),
+                    contact_info=opp_data.get('contact_info'),
+                    keywords=opp_data.get('keywords'),
+                    relevance_score=opp_data.get('relevance_score', 75),
+                    urgency_score=opp_data.get('urgency_score', 70),
+                    value_score=opp_data.get('value_score', 65),
+                    competition_score=opp_data.get('competition_score', 60),
+                    total_score=opp_data.get('total_score', 70)
+                )
+                
+                db.session.add(opportunity)
+                added_count += 1
+                
+                # Commit in batches of 100
+                if added_count % 100 == 0:
+                    db.session.commit()
+                    
+            except Exception as e:
+                logger.warning(f"Error adding opportunity: {e}")
+                continue
+        
+        # Final commit
+        db.session.commit()
+        
+        return jsonify({
+            'message': f'Successfully added {added_count} opportunities',
+            'added': added_count,
+            'total_opportunities': db.session.query(Opportunity).count()
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Bulk insert error: {str(e)}")
+        return jsonify({'error': 'Failed to bulk insert opportunities'}), 500
+
+# Enhanced init-data endpoint for better scaling
+@app.route('/api/init-data-large', methods=['POST'])
+def init_large_sample_data():
+    """Initialize with larger sample data set"""
+    try:
+        # Get count parameter
+        data = request.get_json() if request.is_json else {}
+        count = data.get('count', 100) if data else 100
+        count = min(count, 1000)  # Limit to 1000 per request
+        
+        agencies = [
+            "Department of Defense", "Department of Health and Human Services",
+            "Department of Homeland Security", "Department of Veterans Affairs",
+            "General Services Administration", "Department of Energy",
+            "Department of Transportation", "Department of Education"
+        ]
+        
+        opportunity_types = [
+            "IT Services", "Construction", "Professional Services", "Research",
+            "Medical Supplies", "Security Services", "Environmental Services",
+            "Training", "Logistics", "Telecommunications"
+        ]
+        
+        locations = [
+            "Washington, DC", "Virginia", "Maryland", "California",
+            "Texas", "New York", "Florida", "Illinois"
+        ]
+        
+        added_count = 0
+        
+        for i in range(count):
+            agency = random.choice(agencies)
+            opp_type = random.choice(opportunity_types)
+            location = random.choice(locations)
+            
+            posted_date = datetime.now() - timedelta(days=random.randint(1, 90))
+            due_date = posted_date + timedelta(days=random.randint(14, 120))
+            estimated_value = random.randint(50000, 50000000)
+            
+            opportunity = Opportunity(
+                title=f"{opp_type} - {agency} - {random.randint(1000, 9999)}",
+                description=f"Large-scale {opp_type.lower()} opportunity for {agency}. "
+                           f"This contract involves comprehensive services and solutions. "
+                           f"Location: {location}. Duration: {random.randint(12, 48)} months.",
+                agency_name=agency,
+                opportunity_number=f"LARGE-{random.randint(100000, 999999)}",
+                estimated_value=float(estimated_value),
+                posted_date=posted_date,
+                due_date=due_date,
+                source_type='federal_contract',
+                source_name='Large Sample Generator',
+                location=location,
+                contact_info=f"contact.{agency.lower().replace(' ', '')}@example.gov",
+                keywords=[opp_type.lower(), agency.lower()],
+                relevance_score=random.randint(70, 95),
+                urgency_score=random.randint(60, 90),
+                value_score=random.randint(50, 85),
+                competition_score=random.randint(40, 80),
+                total_score=random.randint(65, 90)
+            )
+            
+            db.session.add(opportunity)
+            added_count += 1
+            
+            # Commit in batches
+            if added_count % 50 == 0:
+                db.session.commit()
+        
+        # Final commit
+        db.session.commit()
+        
+        total_count = db.session.query(Opportunity).count()
+        
+        return jsonify({
+            'message': f'Successfully added {added_count} large sample opportunities',
+            'added': added_count,
+            'total_opportunities': total_count
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Large sample data creation error: {str(e)}")
+        return jsonify({'error': 'Failed to create large sample data'}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001, debug=True)

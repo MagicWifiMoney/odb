@@ -29,7 +29,7 @@ export default function OpportunityList() {
   const [sourceFilter, setSourceFilter] = useState('all')
   const [pagination, setPagination] = useState({
     page: 1,
-    per_page: 20,
+    per_page: 50, // Increased for better performance with large datasets
     total: 0,
     pages: 0
   })
