@@ -37,7 +37,7 @@ export default function OpportunityList() {
 
   useEffect(() => {
     loadOpportunities()
-  }, [searchTerm, sortBy, sortOrder, statusFilter, sourceFilter, pagination.page])
+  }, [searchTerm, sortBy, sortOrder, statusFilter, sourceFilter, pagination.page]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadOpportunities = async () => {
     try {

@@ -1,6 +1,9 @@
 // API configuration
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://backend-git-main-jacobs-projects-cf4c7bdb.vercel.app/api'
 
+// Log API configuration on startup
+console.log('Using API URL:', API_BASE_URL)
+
 // API client class
 class ApiClient {
   constructor(baseURL = API_BASE_URL) {
@@ -10,12 +13,16 @@ class ApiClient {
   async request(endpoint, options = {}) {
     const url = `${this.baseURL}${endpoint}`
     
+    // Create abort controller with timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    
     const config = {
       headers: {
         'Content-Type': 'application/json',
         ...options.headers,
       },
-      signal: AbortSignal.timeout(30000), // 30 second timeout
+      signal: controller.signal,
       ...options,
     }
 
@@ -25,15 +32,34 @@ class ApiClient {
       const response = await fetch(url, config)
       console.log(`API response for ${endpoint}:`, response.status, response.statusText)
       
+      // Clear the timeout
+      clearTimeout(timeoutId)
+      
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error || `HTTP error! status: ${response.status}`)
+        let errorMessage = `HTTP error! status: ${response.status}`;
+        try {
+          const errorData = await response.json();
+          if (errorData && errorData.error) {
+            errorMessage = errorData.error;
+          }
+        } catch (parseError) {
+          console.error('Could not parse error response:', parseError);
+        }
+        throw new Error(errorMessage);
       }
 
       const data = await response.json()
       console.log(`API data for ${endpoint}:`, data)
       return data
     } catch (error) {
+      // Clear the timeout
+      clearTimeout(timeoutId)
+      
+      if (error.name === 'AbortError') {
+        console.error(`Request timeout for ${endpoint}`)
+        throw new Error('Request timed out after 30 seconds')
+      }
+      
       console.error(`API request failed: ${endpoint}`, error)
       throw error
     }
@@ -128,12 +154,19 @@ export const formatDate = (dateString) => {
   
   try {
     const date = new Date(dateString)
+    
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+      return 'Invalid Date'
+    }
+    
     return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
     })
   } catch (error) {
+    console.error('Date formatting error:', error)
     return 'Invalid Date'
   }
 }
@@ -142,12 +175,24 @@ export const formatRelativeDate = (dateString) => {
   if (!dateString) return 'N/A'
   
   try {
+    // Parse date and handle timezone issues
     const date = new Date(dateString)
+    
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+      return 'Invalid Date'
+    }
+    
     const now = new Date()
-    const diffTime = date - now
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    
+    // Calculate diff in milliseconds and convert to days
+    const diffTime = date.getTime() - now.getTime()
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24))
     
     if (diffDays < 0) {
+      if (diffDays === -1) {
+        return 'Yesterday'
+      }
       return `${Math.abs(diffDays)} days ago`
     } else if (diffDays === 0) {
       return 'Today'
@@ -161,6 +206,7 @@ export const formatRelativeDate = (dateString) => {
       return `In ${Math.ceil(diffDays / 30)} months`
     }
   } catch (error) {
+    console.error('Date formatting error:', error)
     return 'Invalid Date'
   }
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { createBrowserRouter, RouterProvider, Route, createRoutesFromElements, Outlet } from 'react-router-dom'
 import { Toaster } from 'sonner'
 import Sidebar from '@/components/Sidebar'
 import Dashboard from '@/components/Dashboard'
@@ -34,8 +34,9 @@ function App() {
     }
   }
 
-  return (
-    <Router>
+  // Create a layout component to wrap all routes
+  const AppLayout = () => {
+    return (
       <div className={`min-h-screen bg-background text-foreground ${darkMode ? 'dark' : ''}`}>
         <div className="flex">
           <Sidebar 
@@ -49,22 +50,32 @@ function App() {
             sidebarOpen ? 'ml-64' : 'ml-16'
           }`}>
             <div className="p-6">
-              <Routes>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/opportunities" element={<OpportunityList />} />
-                <Route path="/opportunities/:id" element={<OpportunityDetail />} />
-                <Route path="/search" element={<SearchPage />} />
-                <Route path="/sync" element={<SyncStatus />} />
-                <Route path="/settings" element={<SettingsPage />} />
-              </Routes>
+              {/* Outlet will be injected by React Router */}
+              <Outlet />
             </div>
           </main>
         </div>
         
         <Toaster />
       </div>
-    </Router>
-  )
+    );
+  };
+  
+  // Create router configuration
+  const router = createBrowserRouter(
+    createRoutesFromElements(
+      <Route element={<AppLayout />}>
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/opportunities" element={<OpportunityList />} />
+        <Route path="/opportunities/:id" element={<OpportunityDetail />} />
+        <Route path="/search" element={<SearchPage />} />
+        <Route path="/sync" element={<SyncStatus />} />
+        <Route path="/settings" element={<SettingsPage />} />
+      </Route>
+    )
+  );
+
+  return <RouterProvider router={router} />
 }
 
 export default App

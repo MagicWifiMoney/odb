@@ -69,3 +69,6 @@ temp/
 *.p12
 *.pfx
 .vercel
+
+# Local Netlify folder
+.netlify

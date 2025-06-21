@@ -32,26 +32,35 @@ export default function OpportunityDetail() {
 
   useEffect(() => {
     loadOpportunityDetail()
-  }, [id])
+  }, [id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadOpportunityDetail = async () => {
     try {
       setLoading(true)
       
-      const [opportunityData, scoreData] = await Promise.all([
-        apiClient.getOpportunity(id),
-        apiClient.getScoreExplanation(id)
-      ])
+      // First fetch the opportunity details
+      const opportunityData = await apiClient.getOpportunity(id);
+      setOpportunity(opportunityData);
       
-      setOpportunity(opportunityData)
-      setScoreExplanation(scoreData)
+      // Then fetch the score explanation if opportunity was found
+      if (opportunityData && opportunityData.id) {
+        try {
+          const scoreData = await apiClient.getScoreExplanation(id);
+          setScoreExplanation(scoreData);
+        } catch (scoreError) {
+          console.warn('Failed to load score explanation:', scoreError);
+          // Don't show a toast for this, as it's not critical
+          setScoreExplanation(null);
+        }
+      }
     } catch (error) {
       console.error('Failed to load opportunity detail:', error)
       toast({
         title: "Error",
-        description: "Failed to load opportunity details",
+        description: `Failed to load opportunity details: ${error.message}`,
         variant: "destructive",
       })
+      setOpportunity(null);
     } finally {
       setLoading(false)
     }
