@@ -1,5 +1,5 @@
 // API configuration
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://backend-git-main-jacobs-projects-cf4c7bdb.vercel.app/api'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://web-production-ba1c.up.railway.app/api'
 
 // Log API configuration on startup
 console.log('Using API URL:', API_BASE_URL)
