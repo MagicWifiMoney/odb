@@ -23,11 +23,12 @@ import {
   AlertCircle,
   CheckCircle
 } from 'lucide-react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { apiClient, formatCurrency } from '@/lib/api'
-import { useToast } from '@/hooks/use-toast'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
+import { Button } from './ui/button'
+import { Badge } from './ui/badge'
+import { formatCurrency } from '../lib/api'
+import { useToast } from '../hooks/use-toast'
+import { supabase } from '../lib/supabase'
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8']
 
@@ -51,33 +52,83 @@ export default function Dashboard() {
     try {
       setLoading(true)
       
-      console.log('Loading dashboard data...')
+      console.log('Loading dashboard data from Supabase...')
       
-      // Make API calls in parallel for better performance
-      const promises = [
-        apiClient.getDashboardOpportunities({ per_page: 20 }).then(data => {
-          setLoadingSteps(prev => ({ ...prev, opportunities: true }))
-          return data
-        }),
-        apiClient.getOpportunityStats().then(data => {
-          setLoadingSteps(prev => ({ ...prev, stats: true }))
-          return data
-        }),
-        apiClient.getSyncStatus().then(data => {
-          setLoadingSteps(prev => ({ ...prev, sync: true }))
-          return data
-        })
-      ]
+      // Get recent opportunities
+      const { data: opportunities, error: oppError } = await supabase
+        .from('opportunities')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(20)
+
+      if (oppError) throw oppError
       
-      const [opportunitiesData, statsData, syncData] = await Promise.all(promises)
+      setLoadingSteps(prev => ({ ...prev, opportunities: true }))
+      setRecentOpportunities(opportunities || [])
+
+      // Get total count
+      const { count: totalCount, error: countError } = await supabase
+        .from('opportunities')
+        .select('*', { count: 'exact', head: true })
+
+      if (countError) throw countError
+
+      // Get stats by source type
+      const { data: sourceStats, error: sourceError } = await supabase
+        .from('opportunities')
+        .select('source_type')
+
+      if (sourceError) throw sourceError
+
+      // Calculate source type distribution
+      const sourceTypeStats = sourceStats.reduce((acc, opp) => {
+        const type = opp.source_type || 'unknown'
+        acc[type] = (acc[type] || 0) + 1
+        return acc
+      }, {})
+
+      // Get stats by agency
+      const { data: agencyStats, error: agencyError } = await supabase
+        .from('opportunities')
+        .select('agency_name')
+        .limit(1000) // Get enough for meaningful stats
+
+      if (agencyError) throw agencyError
+
+      // Calculate agency distribution (top 10)
+      const agencyTypeStats = agencyStats.reduce((acc, opp) => {
+        const agency = opp.agency_name || 'Unknown'
+        acc[agency] = (acc[agency] || 0) + 1
+        return acc
+      }, {})
+
+      const topAgencies = Object.entries(agencyTypeStats)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10)
+        .reduce((acc, [agency, count]) => {
+          acc[agency] = count
+          return acc
+        }, {})
+
+      setLoadingSteps(prev => ({ ...prev, stats: true }))
       
-      console.log('All API calls completed successfully!')
+      setStats({
+        total_opportunities: totalCount,
+        active_opportunities: totalCount,
+        by_type: sourceTypeStats,
+        by_agency: topAgencies
+      })
+
+      // Mock sync status since we're using Supabase directly
+      setLoadingSteps(prev => ({ ...prev, sync: true }))
+      setSyncStatus({
+        last_sync: new Date().toISOString(),
+        status: 'completed',
+        opportunities_synced: totalCount
+      })
       
-      setStats(statsData)
-      setSyncStatus(syncData)
-      setRecentOpportunities(opportunitiesData.opportunities || [])
-      
-      console.log('State updated! Opportunities count:', opportunitiesData.opportunities?.length)
+      console.log('All Supabase queries completed successfully!')
+      console.log('Opportunities count:', opportunities?.length)
     } catch (error) {
       console.error('Failed to load dashboard data:', error)
       toast({
@@ -94,24 +145,22 @@ export default function Dashboard() {
   const handleSync = async () => {
     try {
       toast({
-        title: "Sync Started",
-        description: "Data synchronization has been initiated",
+        title: "Refresh Started",
+        description: "Refreshing dashboard data...",
       })
       
-      await apiClient.syncData()
+      // Since we're using Supabase directly, just reload the data
+      await loadDashboardData()
       
       toast({
-        title: "Sync Complete",
-        description: "Data has been synchronized successfully",
+        title: "Refresh Complete",
+        description: "Dashboard data has been refreshed successfully",
       })
-      
-      // Reload dashboard data
-      loadDashboardData()
     } catch (error) {
-      console.error('Sync failed:', error)
+      console.error('Refresh failed:', error)
       toast({
-        title: "Sync Failed",
-        description: error.message || "Failed to synchronize data",
+        title: "Refresh Failed",
+        description: error.message || "Failed to refresh dashboard data",
         variant: "destructive",
       })
     }

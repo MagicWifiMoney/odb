@@ -1,32 +1,39 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Search, Filter, Calendar, DollarSign, Target } from 'lucide-react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Slider } from '@/components/ui/slider'
-import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
-import { apiClient, formatCurrency, formatDate, formatRelativeDate, getScoreColor, getScoreBadgeColor, getUrgencyColor, getSourceTypeLabel, getSourceTypeColor } from '@/lib/api'
-import { useToast } from '@/hooks/use-toast'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
+import { Button } from './ui/button'
+import { Input } from './ui/input'
+import { Label } from './ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
+import { Slider } from './ui/slider'
+import { Badge } from './ui/badge'
+import { Separator } from './ui/separator'
+import { AlertCircle, Clock, Building, MapPin, Users, ExternalLink } from 'lucide-react'
+import { Alert, AlertDescription } from './ui/alert'
+import { formatCurrency, formatDate, formatRelativeDate, getScoreColor, getScoreBadgeColor, getUrgencyColor, getSourceTypeLabel, getSourceTypeColor } from '../lib/api'
+import { useToast } from '../hooks/use-toast'
+import { supabase } from '../lib/supabase'
 
 export default function SearchPage() {
   const [searchForm, setSearchForm] = useState({
     keywords: '',
-    agency_name: '',
-    min_score: [0],
-    max_value: '',
-    min_value: '',
-    due_within_days: 'any',
-    source_type: 'all',
-    location: '',
-    category: 'all'
+    minValue: '',
+    maxValue: '',
+    postedSince: '',
+    dueBy: '',
+    sourceType: 'all',
+    minScore: ''
   })
   
-  const [results, setResults] = useState([])
-  const [loading, setLoading] = useState(false)
+  const [searchResults, setSearchResults] = useState([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState(null)
   const [hasSearched, setHasSearched] = useState(false)
+
+  // Search state
+  const [totalResults, setTotalResults] = useState(0)
+  const [searchTime, setSearchTime] = useState(0)
+
   const { toast } = useToast()
 
   const handleInputChange = (field, value) => {
@@ -36,64 +43,115 @@ export default function SearchPage() {
     }))
   }
 
-  const handleSearch = async () => {
+  const searchOpportunities = async () => {
+    if (!searchForm.keywords.trim()) {
+      setError('Please enter search keywords')
+      return
+    }
+
+    setIsLoading(true)
+    setError(null)
+    setHasSearched(true)
+    const startTime = Date.now()
+
     try {
-      setLoading(true)
-      setHasSearched(true)
-      
-      // Prepare search data
-      const searchData = {
-        keywords: searchForm.keywords.split(',').map(k => k.trim()).filter(k => k),
-        min_score: searchForm.min_score[0],
-        due_within_days: searchForm.due_within_days !== 'any' ? parseInt(searchForm.due_within_days) : undefined,
-        source_type: searchForm.source_type !== 'all' ? searchForm.source_type : undefined,
-        agency_name: searchForm.agency_name || undefined,
-        location: searchForm.location || undefined,
-        category: searchForm.category !== 'all' ? searchForm.category : undefined,
-        min_value: searchForm.min_value ? parseFloat(searchForm.min_value) : undefined,
-        max_value: searchForm.max_value ? parseFloat(searchForm.max_value) : undefined
+      // First, let's check what tables exist in the database
+      const { data: tables, error: tablesError } = await supabase
+        .from('information_schema.tables')
+        .select('table_name')
+        .eq('table_schema', 'public')
+
+      if (tablesError) {
+        console.log('Tables query error:', tablesError)
+        // Try a simpler approach - just check if opportunities table exists
+        const { data, error: simpleError } = await supabase
+          .from('opportunities')
+          .select('*')
+          .limit(1)
+
+        if (simpleError) {
+          throw new Error(`Database setup needed. Error: ${simpleError.message}`)
+        }
+      } else {
+        console.log('Available tables:', tables)
       }
 
-      // Remove undefined values
-      Object.keys(searchData).forEach(key => {
-        if (searchData[key] === undefined || searchData[key] === '') {
-          delete searchData[key]
-        }
-      })
+      // If we get here, try to search the opportunities table
+      let query = supabase
+        .from('opportunities')
+        .select('*')
 
-      const data = await apiClient.searchOpportunities(searchData)
-      setResults(data.opportunities || [])
-      
-      toast({
-        title: "Search Complete",
-        description: `Found ${data.opportunities?.length || 0} opportunities`,
-      })
-    } catch (error) {
-      console.error('Search failed:', error)
-      toast({
-        title: "Search Failed",
-        description: error.message || "Failed to search opportunities",
-        variant: "destructive",
-      })
+      // Apply text search on multiple columns - start with basic columns
+      if (searchForm.keywords.trim()) {
+        const keywords = searchForm.keywords.trim()
+        // Start with basic search that should work with most schemas
+        query = query.or(`title.ilike.%${keywords}%,description.ilike.%${keywords}%`)
+      }
+
+      // Apply basic filters only
+      if (searchForm.minValue) {
+        const minValue = parseFloat(searchForm.minValue)
+        if (!isNaN(minValue)) {
+          query = query.gte('estimated_value', minValue)
+        }
+      }
+
+      // Limit results for testing
+      query = query.limit(10)
+
+      const { data, error: supabaseError } = await query
+
+      if (supabaseError) {
+        throw new Error(supabaseError.message)
+      }
+
+      const endTime = Date.now()
+      setSearchTime(endTime - startTime)
+      setSearchResults(data || [])
+      setTotalResults(data?.length || 0)
+
+      // Log the first result to see the actual schema
+      if (data && data.length > 0) {
+        console.log('Sample opportunity data:', data[0])
+        console.log('Available columns:', Object.keys(data[0]))
+      }
+
+    } catch (err) {
+      console.error('Search error:', err)
+      setError(`Search Failed: ${err.message}`)
+      setSearchResults([])
+      setTotalResults(0)
     } finally {
-      setLoading(false)
+      setIsLoading(false)
     }
+  }
+
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    searchOpportunities()
   }
 
   const clearSearch = () => {
     setSearchForm({
       keywords: '',
-      agency_name: '',
-      min_score: [0],
-      max_value: '',
-      min_value: '',
-      due_within_days: 'any',
-      source_type: 'all',
-      location: '',
-      category: 'all'
+      minValue: '',
+      maxValue: '',
+      postedSince: '',
+      dueBy: '',
+      sourceType: 'all',
+      minScore: ''
     })
-    setResults([])
+    setSearchResults([])
+    setError(null)
     setHasSearched(false)
+    setTotalResults(0)
+    setSearchTime(0)
+  }
+
+  const openOpportunity = (url) => {
+    if (url) {
+      window.open(url, '_blank', 'noopener,noreferrer')
+    }
   }
 
   return (
@@ -135,12 +193,13 @@ export default function SearchPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="agency">Agency Name</Label>
+                <Label htmlFor="minValue">Minimum Value ($)</Label>
                 <Input
-                  id="agency"
-                  placeholder="Department of Defense, NASA, etc."
-                  value={searchForm.agency_name}
-                  onChange={(e) => handleInputChange('agency_name', e.target.value)}
+                  id="minValue"
+                  type="number"
+                  placeholder="10000"
+                  value={searchForm.minValue}
+                  onChange={(e) => handleInputChange('minValue', e.target.value)}
                 />
               </div>
             </div>
@@ -148,10 +207,10 @@ export default function SearchPage() {
             {/* Score and Value Filters */}
             <div className="grid gap-4 md:grid-cols-3">
               <div className="space-y-2">
-                <Label>Minimum Score: {searchForm.min_score[0]}</Label>
+                <Label>Minimum Score: {searchForm.minScore}</Label>
                 <Slider
-                  value={searchForm.min_score}
-                  onValueChange={(value) => handleInputChange('min_score', value)}
+                  value={[parseFloat(searchForm.minScore) || 0]}
+                  onValueChange={(value) => handleInputChange('minScore', value[0].toString())}
                   max={100}
                   step={5}
                   className="w-full"
@@ -164,24 +223,13 @@ export default function SearchPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="min_value">Minimum Value ($)</Label>
+                <Label htmlFor="maxValue">Maximum Value ($)</Label>
                 <Input
-                  id="min_value"
-                  type="number"
-                  placeholder="10000"
-                  value={searchForm.min_value}
-                  onChange={(e) => handleInputChange('min_value', e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="max_value">Maximum Value ($)</Label>
-                <Input
-                  id="max_value"
+                  id="maxValue"
                   type="number"
                   placeholder="1000000"
-                  value={searchForm.max_value}
-                  onChange={(e) => handleInputChange('max_value', e.target.value)}
+                  value={searchForm.maxValue}
+                  onChange={(e) => handleInputChange('maxValue', e.target.value)}
                 />
               </div>
             </div>
@@ -189,30 +237,30 @@ export default function SearchPage() {
             {/* Category and Source Filters */}
             <div className="grid gap-4 md:grid-cols-3">
               <div className="space-y-2">
-                <Label>Due Within (Days)</Label>
-                <Select 
-                  value={searchForm.due_within_days} 
-                  onValueChange={(value) => handleInputChange('due_within_days', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Any time" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="any">Any time</SelectItem>
-                    <SelectItem value="7">7 days</SelectItem>
-                    <SelectItem value="14">14 days</SelectItem>
-                    <SelectItem value="30">30 days</SelectItem>
-                    <SelectItem value="60">60 days</SelectItem>
-                    <SelectItem value="90">90 days</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label>Posted Since</Label>
+                <Input
+                  id="postedSince"
+                  type="date"
+                  value={searchForm.postedSince}
+                  onChange={(e) => handleInputChange('postedSince', e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Due By</Label>
+                <Input
+                  id="dueBy"
+                  type="date"
+                  value={searchForm.dueBy}
+                  onChange={(e) => handleInputChange('dueBy', e.target.value)}
+                />
               </div>
 
               <div className="space-y-2">
                 <Label>Source Type</Label>
                 <Select 
-                  value={searchForm.source_type} 
-                  onValueChange={(value) => handleInputChange('source_type', value)}
+                  value={searchForm.sourceType} 
+                  onValueChange={(value) => handleInputChange('sourceType', value)}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -227,49 +275,15 @@ export default function SearchPage() {
                   </SelectContent>
                 </Select>
               </div>
-
-              <div className="space-y-2">
-                <Label>Category</Label>
-                <Select 
-                  value={searchForm.category} 
-                  onValueChange={(value) => handleInputChange('category', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Categories</SelectItem>
-                    <SelectItem value="technology">Technology</SelectItem>
-                    <SelectItem value="construction">Construction</SelectItem>
-                    <SelectItem value="services">Services</SelectItem>
-                    <SelectItem value="healthcare">Healthcare</SelectItem>
-                    <SelectItem value="education">Education</SelectItem>
-                    <SelectItem value="research">Research</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* Location */}
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="location">Location</Label>
-                <Input
-                  id="location"
-                  placeholder="California, Washington DC, etc."
-                  value={searchForm.location}
-                  onChange={(e) => handleInputChange('location', e.target.value)}
-                />
-              </div>
             </div>
 
             <Separator />
 
             {/* Action Buttons */}
             <div className="flex items-center space-x-4">
-              <Button onClick={handleSearch} disabled={loading}>
+              <Button onClick={handleSubmit} disabled={isLoading}>
                 <Search className="w-4 h-4 mr-2" />
-                {loading ? 'Searching...' : 'Search Opportunities'}
+                {isLoading ? 'Searching...' : 'Search Opportunities'}
               </Button>
               <Button variant="outline" onClick={clearSearch}>
                 Clear All
@@ -285,11 +299,11 @@ export default function SearchPage() {
           <CardHeader>
             <CardTitle>Search Results</CardTitle>
             <CardDescription>
-              {loading ? 'Searching...' : `Found ${results.length} opportunities`}
+              {isLoading ? 'Searching...' : `Found ${totalResults} opportunities in ${searchTime}ms`}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {loading ? (
+            {isLoading ? (
               <div className="space-y-4">
                 {[...Array(3)].map((_, i) => (
                   <div key={i} className="p-4 border rounded-lg">
@@ -304,15 +318,22 @@ export default function SearchPage() {
                   </div>
                 ))}
               </div>
-            ) : results.length > 0 ? (
+            ) : error ? (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  {error}
+                </AlertDescription>
+              </Alert>
+            ) : totalResults > 0 ? (
               <div className="space-y-4">
-                {results.map((opportunity) => (
+                {searchResults.map((opportunity) => (
                   <div key={opportunity.id} className="p-4 border rounded-lg hover:shadow-md transition-shadow">
                     <div className="flex items-start justify-between mb-3">
                       <h3 className="text-lg font-semibold">{opportunity.title}</h3>
-                      <Badge className={getScoreBadgeColor(opportunity.total_score)}>
+                      <Badge className={getScoreBadgeColor(opportunity.relevance_score)}>
                         <Target className="w-3 h-3 mr-1" />
-                        {opportunity.total_score}
+                        {opportunity.relevance_score}
                       </Badge>
                     </div>
 
@@ -352,16 +373,32 @@ export default function SearchPage() {
 
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
-                        {opportunity.keywords && opportunity.keywords.slice(0, 3).map((keyword, index) => (
-                          <Badge key={index} variant="secondary" className="text-xs">
-                            {keyword}
-                          </Badge>
-                        ))}
-                        {opportunity.keywords && opportunity.keywords.length > 3 && (
-                          <Badge variant="secondary" className="text-xs">
-                            +{opportunity.keywords.length - 3} more
-                          </Badge>
-                        )}
+                        {(() => {
+                          // Handle different keyword formats
+                          let keywords = [];
+                          if (opportunity.keywords) {
+                            if (Array.isArray(opportunity.keywords)) {
+                              keywords = opportunity.keywords;
+                            } else if (typeof opportunity.keywords === 'string') {
+                              keywords = opportunity.keywords.split(',').map(k => k.trim()).filter(k => k);
+                            }
+                          }
+                          
+                          return (
+                            <>
+                              {keywords.slice(0, 3).map((keyword, index) => (
+                                <Badge key={index} variant="secondary" className="text-xs">
+                                  {keyword}
+                                </Badge>
+                              ))}
+                              {keywords.length > 3 && (
+                                <Badge variant="secondary" className="text-xs">
+                                  +{keywords.length - 3} more
+                                </Badge>
+                              )}
+                            </>
+                          )
+                        })()}
                       </div>
 
                       <div className="flex items-center space-x-4 text-xs text-muted-foreground">

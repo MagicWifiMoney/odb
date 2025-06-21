@@ -11,10 +11,14 @@ import {
   Moon,
   Sun,
   Target,
-  TrendingUp
+  TrendingUp,
+  User,
+  LogOut
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/contexts/AuthContext'
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: Home },
@@ -26,6 +30,19 @@ const navigation = [
 
 export default function Sidebar({ isOpen, onToggle, darkMode, onToggleDarkMode }) {
   const location = useLocation()
+  const { user, signOut } = useAuth()
+
+  const getUserInitials = (user) => {
+    if (user?.user_metadata?.full_name) {
+      return user.user_metadata.full_name
+        .split(' ')
+        .map(name => name[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2)
+    }
+    return user?.email?.slice(0, 2).toUpperCase() || 'U'
+  }
 
   return (
     <>
@@ -102,7 +119,57 @@ export default function Sidebar({ isOpen, onToggle, darkMode, onToggleDarkMode }
           </nav>
 
           {/* Footer */}
-          <div className="p-4 border-t border-sidebar-border">
+          <div className="p-4 border-t border-sidebar-border space-y-2">
+            {/* User Profile Section */}
+            {user && (
+              <div className="space-y-2">
+                <Link
+                  to="/profile"
+                  className={cn(
+                    "flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors duration-200",
+                    location.pathname === '/profile'
+                      ? "bg-sidebar-accent text-sidebar-accent-foreground" 
+                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                  )}
+                >
+                  <Avatar className="w-5 h-5">
+                    <AvatarFallback className="text-xs">
+                      {getUserInitials(user)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className={cn(
+                    "transition-opacity duration-300 flex-1 min-w-0",
+                    isOpen ? "opacity-100" : "opacity-0"
+                  )}>
+                    <div className="text-sm font-medium truncate">
+                      {user.user_metadata?.full_name || 'User'}
+                    </div>
+                    <div className="text-xs text-sidebar-foreground/60 truncate">
+                      {user.email}
+                    </div>
+                  </div>
+                </Link>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={signOut}
+                  className={cn(
+                    "w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent",
+                    !isOpen && "justify-center"
+                  )}
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span className={cn(
+                    "ml-3 transition-opacity duration-300",
+                    isOpen ? "opacity-100" : "opacity-0"
+                  )}>
+                    Sign Out
+                  </span>
+                </Button>
+              </div>
+            )}
+
             <Button
               variant="ghost"
               size="sm"

@@ -8,6 +8,12 @@ import OpportunityDetail from '@/components/OpportunityDetail'
 import SearchPage from '@/components/SearchPage'
 import SettingsPage from '@/components/SettingsPage'
 import SyncStatus from '@/components/SyncStatus'
+import { AuthProvider } from '@/contexts/AuthContext'
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
+import { LoginPage } from '@/pages/LoginPage'
+import { RegisterPage } from '@/pages/RegisterPage'
+import { ProfilePage } from '@/pages/ProfilePage'
+import { ForgotPasswordPage } from '@/pages/ForgotPasswordPage'
 import './App.css'
 
 function App() {
@@ -64,18 +70,32 @@ function App() {
   // Create router configuration
   const router = createBrowserRouter(
     createRoutesFromElements(
-      <Route element={<AppLayout />}>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/opportunities" element={<OpportunityList />} />
-        <Route path="/opportunities/:id" element={<OpportunityDetail />} />
-        <Route path="/search" element={<SearchPage />} />
-        <Route path="/sync" element={<SyncStatus />} />
-        <Route path="/settings" element={<SettingsPage />} />
-      </Route>
+      <>
+        {/* Public routes */}
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        
+        {/* Protected routes */}
+        <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/opportunities" element={<OpportunityList />} />
+          <Route path="/opportunities/:id" element={<OpportunityDetail />} />
+          <Route path="/search" element={<SearchPage />} />
+          <Route path="/sync" element={<SyncStatus />} />
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
+        </Route>
+      </>
     )
   );
 
-  return <RouterProvider router={router} />
+  return (
+    <AuthProvider>
+      <RouterProvider router={router} />
+    </AuthProvider>
+  )
 }
 
 export default App

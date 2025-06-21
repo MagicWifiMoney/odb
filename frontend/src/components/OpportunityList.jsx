@@ -11,13 +11,14 @@ import {
   Building,
   Target
 } from 'lucide-react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { apiClient, formatCurrency, formatDate, formatRelativeDate, getScoreColor, getScoreBadgeColor, getUrgencyColor, getSourceTypeLabel, getSourceTypeColor } from '@/lib/api'
-import { useToast } from '@/hooks/use-toast'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
+import { Button } from './ui/button'
+import { Input } from './ui/input'
+import { Badge } from './ui/badge'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
+import { formatCurrency, formatDate, formatRelativeDate, getScoreColor, getScoreBadgeColor, getUrgencyColor, getSourceTypeLabel, getSourceTypeColor } from '../lib/api'
+import { useToast } from '../hooks/use-toast'
+import { supabase } from '../lib/supabase'
 
 export default function OpportunityList() {
   const [opportunities, setOpportunities] = useState([])
@@ -48,30 +49,50 @@ export default function OpportunityList() {
     try {
       setLoading(true)
       
-      const params = {
-        page: pagination.page,
-        per_page: pagination.per_page,
-        sort_by: sortBy,
-        sort_order: sortOrder
-      }
-
-      if (searchTerm) params.search = searchTerm
-      if (statusFilter !== 'all') params.status = statusFilter
-      if (sourceFilter !== 'all') params.source_type = sourceFilter
-
-      console.log('Loading opportunities with params:', params)
+      console.log('Loading opportunities from Supabase...')
       const startTime = performance.now()
       
-      const data = await apiClient.getOpportunities(params)
+      // Build Supabase query
+      let query = supabase
+        .from('opportunities')
+        .select('*', { count: 'exact' })
+
+      // Apply search filter
+      if (searchTerm) {
+        query = query.or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,agency_name.ilike.%${searchTerm}%`)
+      }
+
+      // Apply status filter (if your database has a status field)
+      if (statusFilter !== 'all') {
+        query = query.eq('status', statusFilter)
+      }
+
+      // Apply source type filter
+      if (sourceFilter !== 'all') {
+        query = query.eq('source_type', sourceFilter)
+      }
+
+      // Apply sorting
+      const sortField = sortBy === 'total_score' ? 'relevance_score' : sortBy
+      query = query.order(sortField, { ascending: sortOrder === 'asc' })
+
+      // Apply pagination
+      const from = (pagination.page - 1) * pagination.per_page
+      const to = from + pagination.per_page - 1
+      query = query.range(from, to)
+
+      const { data, error, count } = await query
+
+      if (error) throw error
       
       const endTime = performance.now()
       console.log(`Opportunities loaded in ${endTime - startTime}ms`)
       
-      setOpportunities(data.opportunities || [])
+      setOpportunities(data || [])
       setPagination({
         ...pagination,
-        total: data.total || 0,
-        pages: data.pages || 0
+        total: count || 0,
+        pages: Math.ceil((count || 0) / pagination.per_page)
       })
     } catch (error) {
       console.error('Failed to load opportunities:', error)
