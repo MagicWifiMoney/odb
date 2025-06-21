@@ -57,33 +57,36 @@ def init_sample_data():
                 'description': 'Large-scale IT infrastructure modernization project for federal agency',
                 'agency_name': 'Department of Defense',
                 'opportunity_number': 'DOD-IT-2024-001',
-                'award_amount': 15000000,
+                'estimated_value': 15000000,
                 'due_date': datetime.now() + timedelta(days=30),
-                'status': 'open',
+                'source_type': 'government',
+                'source_name': 'SAM.gov',
                 'location': 'Washington, DC',
-                'score': 85
+                'total_score': 85
             },
             {
                 'title': 'Cloud Migration Services',
                 'description': 'Cloud migration and modernization services for state government',
                 'agency_name': 'California State Government',
                 'opportunity_number': 'CA-CLOUD-2024-002',
-                'award_amount': 8500000,
+                'estimated_value': 8500000,
                 'due_date': datetime.now() + timedelta(days=45),
-                'status': 'open',
+                'source_type': 'government',
+                'source_name': 'Grants.gov',
                 'location': 'Sacramento, CA',
-                'score': 78
+                'total_score': 78
             },
             {
                 'title': 'Cybersecurity Assessment',
                 'description': 'Comprehensive cybersecurity assessment and implementation',
                 'agency_name': 'Department of Homeland Security',
                 'opportunity_number': 'DHS-SEC-2024-003',
-                'award_amount': 12000000,
+                'estimated_value': 12000000,
                 'due_date': datetime.now() + timedelta(days=21),
-                'status': 'open',
+                'source_type': 'government',
+                'source_name': 'USASpending.gov',
                 'location': 'Multiple Locations',
-                'score': 92
+                'total_score': 92
             }
         ]
         
