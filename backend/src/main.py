@@ -113,6 +113,21 @@ def init_sample_data():
             'error': str(e)
         }), 500
 
+# Test opportunities endpoint (bypass complex filtering)
+@app.route('/api/opportunities-simple', methods=['GET'])
+def get_opportunities_simple():
+    try:
+        opportunities = Opportunity.query.limit(10).all()
+        return jsonify({
+            'opportunities': [opp.to_dict() for opp in opportunities],
+            'count': len(opportunities)
+        })
+    except Exception as e:
+        return jsonify({
+            'error': str(e),
+            'message': 'Failed to fetch opportunities'
+        }), 500
+
 # Register blueprints
 app.register_blueprint(user_bp, url_prefix='/api')
 app.register_blueprint(opportunities_bp, url_prefix='/api')
