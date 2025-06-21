@@ -39,7 +39,7 @@ class PerplexityLiveDiscovery:
         # Default to sonar-pro for enhanced intelligence
         model = model or 'sonar-pro'
         
-        # Enhanced domain filtering for government contracts
+        # Enhanced domain filtering for government contracts (max 10)
         default_domains = [
             'sam.gov',
             'usaspending.gov', 
@@ -47,8 +47,6 @@ class PerplexityLiveDiscovery:
             'defense.gov',
             'gsa.gov',
             'fpds.gov',
-            'fedbizopps.gov',
-            'beta.sam.gov',
             'acquisition.gov',
             'gao.gov',
             'cbo.gov',

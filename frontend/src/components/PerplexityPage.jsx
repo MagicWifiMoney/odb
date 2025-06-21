@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Zap, Brain, TrendingUp, DollarSign, Search, RefreshCw, AlertCircle, CheckCircle, ExternalLink } from 'lucide-react'
+import { Zap, Brain, TrendingUp, DollarSign, Search, RefreshCw, AlertCircle, CheckCircle, ExternalLink, Target, Users, AlertTriangle } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
