@@ -541,16 +541,6 @@ class handler(BaseHTTPRequestHandler):
             print("FIRECRAWL_API_KEY not found - skipping web scraping")
         
 
-        # Get Perplexity AI discovered opportunities
-        try:
-            print("Attempting to discover opportunities via Perplexity AI...")
-            ai_opps = self.fetch_perplexity_opportunities()
-            opportunities.extend(ai_opps)
-            print(f"Successfully discovered {len(ai_opps)} opportunities via Perplexity AI")
-        except Exception as e:
-            error_msg = f"Perplexity AI discovery failed: {str(e)}"
-            print(error_msg)
-            errors.append(error_msg)
         
         # Return empty list if no real data available - no fallback sample data
         if not opportunities:
@@ -819,66 +809,6 @@ class handler(BaseHTTPRequestHandler):
             print(f"Firecrawl integration error: {str(e)}")
             return []
     
-    def fetch_perplexity_opportunities(self):
-        """Discover opportunities using Perplexity AI"""
-        perplexity_api_key = os.environ.get('PERPLEXITY_API_KEY')
-        if not perplexity_api_key:
-            print("PERPLEXITY_API_KEY not found - skipping AI discovery")
-            return []
-        
-        try:
-            # Use Perplexity to discover current RFPs and opportunities
-            url = "https://api.perplexity.ai/chat/completions"
-            
-            headers = {
-                "Authorization": f"Bearer {perplexity_api_key}",
-                "Content-Type": "application/json"
-            }
-            
-            # Query for current federal and state RFPs
-            payload = {
-                "model": "llama-3.1-sonar-small-128k-online",
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": "Find 10 current active federal or state government RFPs, contracts, or grant opportunities posted in the last 30 days. For each, provide: title, agency, estimated value, due date, and brief description. Format as JSON array."
-                    }
-                ],
-                "max_tokens": 2000,
-                "temperature": 0.2
-            }
-            
-            response = requests.post(url, json=payload, headers=headers, timeout=30)
-            response.raise_for_status()
-            
-            data = response.json()
-            content = data.get('choices', [{}])[0].get('message', {}).get('content', '')
-            
-            # Parse the response and convert to our format
-            # For now, return sample data structure
-            discovered_opps = [
-                {
-                    'id': 'perplexity-1',
-                    'title': 'AI-Discovered Federal Technology Modernization RFP',
-                    'description': 'Recently discovered opportunity for federal technology modernization services, identified through AI-powered web monitoring.',
-                    'agency_name': 'Department of Technology',
-                    'estimated_value': 25000000,
-                    'due_date': '2025-08-15',
-                    'posted_date': '2025-06-15',
-                    'status': 'active',
-                    'source_type': 'ai_discovered',
-                    'source_name': 'Perplexity AI Discovery',
-                    'total_score': 88,
-                    'opportunity_number': 'AI-DISC-001'
-                }
-            ]
-            
-            print(f"Perplexity AI discovered {len(discovered_opps)} opportunities")
-            return discovered_opps
-            
-        except Exception as e:
-            print(f"Perplexity AI discovery failed: {str(e)}")
-            return []
     
     def parse_value(self, value_str):
         """Parse estimated value from string format"""
