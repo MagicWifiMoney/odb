@@ -6,6 +6,7 @@ import Dashboard from '@/components/Dashboard'
 import OpportunityList from '@/components/OpportunityList'
 import OpportunityDetail from '@/components/OpportunityDetail'
 import SearchPage from '@/components/SearchPage'
+import PerplexityPage from '@/components/PerplexityPage'
 import SettingsPage from '@/components/SettingsPage'
 import SyncStatus from '@/components/SyncStatus'
 import { AuthProvider } from '@/contexts/AuthContext'
@@ -83,6 +84,7 @@ function App() {
           <Route path="/opportunities" element={<OpportunityList />} />
           <Route path="/opportunities/:id" element={<OpportunityDetail />} />
           <Route path="/search" element={<SearchPage />} />
+          <Route path="/perplexity" element={<PerplexityPage />} />
           <Route path="/sync" element={<SyncStatus />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/profile" element={<ProfilePage />} />

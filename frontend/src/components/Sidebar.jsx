@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import React from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { 
   Home, 
@@ -13,7 +13,8 @@ import {
   Target,
   TrendingUp,
   User,
-  LogOut
+  LogOut,
+  Zap
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -24,6 +25,7 @@ const navigation = [
   { name: 'Dashboard', href: '/', icon: Home },
   { name: 'Opportunities', href: '/opportunities', icon: FileText },
   { name: 'Search', href: '/search', icon: Search },
+  { name: 'Perplexity', href: '/perplexity', icon: Zap },
   { name: 'Sync Status', href: '/sync', icon: RefreshCw },
   { name: 'Settings', href: '/settings', icon: Settings },
 ]

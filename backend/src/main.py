@@ -10,6 +10,7 @@ from src.routes.user import user_bp
 from src.routes.opportunities import opportunities_bp
 from src.routes.scraping import scraping_bp
 from src.routes.rfp_enhanced import rfp_enhanced_bp
+from src.routes.perplexity import perplexity_bp
 from datetime import datetime, timedelta
 import random
 import logging
@@ -152,6 +153,7 @@ app.register_blueprint(user_bp, url_prefix='/api')
 app.register_blueprint(opportunities_bp, url_prefix='/api')
 app.register_blueprint(scraping_bp, url_prefix='/api')
 app.register_blueprint(rfp_enhanced_bp, url_prefix='/api')
+app.register_blueprint(perplexity_bp, url_prefix='/api')
 
 # Database configuration - support both PostgreSQL (Supabase) and SQLite
 database_url = os.getenv('DATABASE_URL', 'sqlite:///opportunities.db')
