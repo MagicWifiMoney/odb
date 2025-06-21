@@ -3,7 +3,7 @@ import sys
 # DON'T CHANGE THIS !!!
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from flask import Flask, send_from_directory
+from flask import Flask, send_from_directory, jsonify
 from flask_cors import CORS
 from src.models.opportunity import db
 from src.routes.user import user_bp
@@ -12,10 +12,37 @@ from src.routes.scraping import scraping_bp
 from src.routes.rfp_enhanced import rfp_enhanced_bp
 
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
-app.config['SECRET_KEY'] = 'asdf#FGSgvasgf$5$WGT'
+
+# Use environment variable for secret key in production
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'asdf#FGSgvasgf$5$WGT')
 
 # Enable CORS for all routes
 CORS(app)
+
+# Health endpoint for Railway deployment
+@app.route('/api/health')
+def health():
+    return jsonify({
+        'status': 'healthy',
+        'message': 'Opportunity Dashboard API is running',
+        'database': 'PostgreSQL' if 'postgresql' in app.config['SQLALCHEMY_DATABASE_URI'] else 'SQLite'
+    })
+
+# API info endpoint
+@app.route('/api')
+def api_info():
+    return jsonify({
+        'name': 'Opportunity Dashboard API',
+        'version': '1.0.0',
+        'status': 'running',
+        'available_endpoints': [
+            '/api',
+            '/api/health', 
+            '/api/opportunities',
+            '/api/opportunities/stats',
+            '/api/sync/status'
+        ]
+    })
 
 # Register blueprints
 app.register_blueprint(user_bp, url_prefix='/api')
