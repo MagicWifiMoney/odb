@@ -39,7 +39,7 @@ export default function OpportunityDetail() {
     try {
       setLoading(true)
       
-      console.log('Loading opportunity detail from Supabase for ID:', id, 'Type:', typeof id)
+      console.log('🔍 Loading opportunity detail from Supabase for ID:', id, 'Type:', typeof id, 'Timestamp:', new Date().toISOString())
       
       // Try both string and number ID formats
       const { data: opportunityData, error } = await supabase
