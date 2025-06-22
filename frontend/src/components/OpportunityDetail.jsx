@@ -20,8 +20,9 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Progress } from '@/components/ui/progress'
-import { apiClient, formatCurrency, formatDate, formatRelativeDate, getScoreColor, getScoreBadgeColor, getUrgencyColor, getSourceTypeLabel, getSourceTypeColor } from '@/lib/api'
+import { formatCurrency, formatDate, formatRelativeDate, getScoreColor, getScoreBadgeColor, getUrgencyColor, getSourceTypeLabel, getSourceTypeColor } from '@/lib/api'
 import { useToast } from '@/hooks/use-toast'
+import { supabase } from '@/lib/supabase'
 
 export default function OpportunityDetail() {
   const { id } = useParams()
@@ -38,21 +39,44 @@ export default function OpportunityDetail() {
     try {
       setLoading(true)
       
-      // First fetch the opportunity details
-      const opportunityData = await apiClient.getOpportunity(id);
-      setOpportunity(opportunityData);
+      console.log('Loading opportunity detail from Supabase for ID:', id)
       
-      // Then fetch the score explanation if opportunity was found
-      if (opportunityData && opportunityData.id) {
-        try {
-          const scoreData = await apiClient.getScoreExplanation(id);
-          setScoreExplanation(scoreData);
-        } catch (scoreError) {
-          console.warn('Failed to load score explanation:', scoreError);
-          // Don't show a toast for this, as it's not critical
-          setScoreExplanation(null);
-        }
+      // Fetch opportunity details directly from Supabase
+      const { data: opportunityData, error } = await supabase
+        .from('opportunities')
+        .select('*')
+        .eq('id', id)
+        .single()
+      
+      if (error) {
+        console.error('Supabase error:', error)
+        throw new Error(`Failed to load opportunity: ${error.message}`)
       }
+      
+      if (!opportunityData) {
+        throw new Error('Opportunity not found')
+      }
+      
+      console.log('Opportunity loaded successfully:', opportunityData)
+      setOpportunity(opportunityData)
+      
+      // Try to fetch score explanation from backend API (optional)
+      try {
+        // Use correct backend URL (Cursor agent changed port to 5002)
+        const API_BASE_URL = import.meta.env.VITE_API_URL || 
+                            (import.meta.env.PROD ? 'https://api.rfptracking.com' : 'http://localhost:5002')
+        const response = await fetch(`${API_BASE_URL}/api/opportunities/${id}/score-explanation`)
+        if (response.ok) {
+          const scoreData = await response.json()
+          setScoreExplanation(scoreData)
+          console.log('Score explanation loaded from backend API')
+        }
+      } catch (scoreError) {
+        console.warn('Score explanation not available from backend API:', scoreError)
+        // This is non-critical, continue without score explanation
+        setScoreExplanation(null)
+      }
+      
     } catch (error) {
       console.error('Failed to load opportunity detail:', error)
       toast({
@@ -60,7 +84,7 @@ export default function OpportunityDetail() {
         description: `Failed to load opportunity details: ${error.message}`,
         variant: "destructive",
       })
-      setOpportunity(null);
+      setOpportunity(null)
     } finally {
       setLoading(false)
     }
