@@ -10,6 +10,7 @@ import PerplexityPage from '@/components/PerplexityPage'
 import SettingsPage from '@/components/SettingsPage'
 import SyncStatus from '@/components/SyncStatus'
 import StagingBanner from '@/components/StagingBanner'
+import APIConnectivityTest from '@/components/APIConnectivityTest'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { LoginPage } from '@/pages/LoginPage'
@@ -91,6 +92,7 @@ function App() {
           <Route path="/perplexity" element={<PerplexityPage />} />
           <Route path="/sync" element={<SyncStatus />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/api-test" element={<APIConnectivityTest />} />
           <Route path="/profile" element={<ProfilePage />} />
         </Route>
       </>

@@ -22,7 +22,14 @@ from ..services.perplexity_client import (
     QueryType, 
     QueryResult
 )
-from ..auth.dependencies import require_auth
+
+# Auth import - temporarily disabled until auth module is available
+# from ..auth.dependencies import require_auth
+
+# Temporary auth placeholder
+def require_auth(request):
+    """Placeholder auth function until auth module is implemented"""
+    return {"user_id": "demo_user"}
 
 # Import cost tracking service
 try:

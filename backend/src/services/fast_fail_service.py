@@ -11,7 +11,7 @@ import json
 
 from .fast_fail_engine import FastFailRuleEngine, FastFailAssessment, FilterAction, FilterRule
 from .caching_service import get_caching_service
-from .supabase_client import get_supabase_client
+from ..config.supabase import get_supabase_client
 
 logger = logging.getLogger(__name__)
 

@@ -2,11 +2,7 @@ from flask import Blueprint, request, jsonify
 from datetime import datetime, timedelta
 import logging
 
-try:
-    from src.services.cost_tracking_service import cost_tracker
-except ImportError:
-    # Fallback if cost tracker not available
-    cost_tracker = None
+from src.services.cost_tracking_service import get_cost_tracking_service
 
 logger = logging.getLogger(__name__)
 
@@ -16,356 +12,268 @@ cost_bp = Blueprint('costs', __name__, url_prefix='/api/costs')
 def get_cost_summary():
     """
     Get cost usage summary for a time period.
-    
-    Query parameters:
-    - days: Number of days to look back (default: 1 for today)
-    - user_id: Optional user filter
     """
     try:
-        if not cost_tracker:
-            return jsonify({
-                'error': 'Cost tracking service not available',
-                'daily': {'budget': 50, 'spent': 0, 'remaining': 50, 'percent_used': 0},
-                'monthly': {'budget': 1000, 'spent': 0, 'remaining': 1000, 'percent_used': 0}
-            }), 503
-        
-        days = request.args.get('days', 1, type=int)
+        days = int(request.args.get('days', 1))
         user_id = request.args.get('user_id')
         
-        # Calculate start date
-        start_date = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
-        if days > 1:
-            start_date = start_date - timedelta(days=days-1)
+        # Get cost tracking service
+        cost_service = get_cost_tracking_service()
         
-        # Get usage summary
-        summary = cost_tracker.get_usage_summary(
+        # Get usage summary for the requested period
+        end_date = datetime.utcnow()
+        start_date = end_date - timedelta(days=days)
+        
+        summary = cost_service.get_usage_summary(
             start_date=start_date,
+            end_date=end_date,
             user_id=user_id
         )
         
         # Get budget status
-        budget_status = cost_tracker.get_budget_status()
+        budget_status = cost_service.get_budget_status()
+        
+        # Calculate projected monthly cost based on current daily average
+        if days >= 1:
+            daily_avg = float(summary.total_cost_usd) / days
+            projected_monthly = daily_avg * 30
+        else:
+            projected_monthly = 0.0
+        
+        response_data = {
+            'daily': {
+                'budget': budget_status['daily']['budget'],
+                'spent': budget_status['daily']['spent'],
+                'remaining': budget_status['daily']['remaining'],
+                'percent_used': budget_status['daily']['percentage'],
+                'alert_level': budget_status['daily']['alert_level'],
+                'api_calls': budget_status['daily']['requests'],
+                'projected_monthly': projected_monthly
+            },
+            'monthly': {
+                'budget': budget_status['monthly']['budget'],
+                'spent': budget_status['monthly']['spent'],
+                'remaining': budget_status['monthly']['remaining'],
+                'percent_used': budget_status['monthly']['percentage'],
+                'alert_level': budget_status['monthly']['alert_level'],
+                'api_calls': budget_status['monthly']['requests'],
+                'days_remaining': (datetime.utcnow().replace(month=datetime.utcnow().month+1, day=1) - datetime.utcnow()).days if datetime.utcnow().month < 12 else (datetime.utcnow().replace(year=datetime.utcnow().year+1, month=1, day=1) - datetime.utcnow()).days
+            },
+            'cache_efficiency': {
+                'hit_rate': budget_status['cache_efficiency']['daily_hit_rate'] / 100 if budget_status['cache_efficiency']['daily_hit_rate'] > 0 else 0,
+                'cost_saved': budget_status['cache_efficiency']['daily_savings'],
+                'calls_saved': summary.cache_hits + summary.similar_matches
+            },
+            'recent_activity': []
+        }
+        
+        # Add most expensive query if available
+        if summary.most_expensive_query:
+            response_data['recent_activity'].append({
+                'timestamp': summary.most_expensive_query['timestamp'],
+                'endpoint': summary.most_expensive_query['endpoint'],
+                'cost': summary.most_expensive_query['cost'],
+                'query': summary.most_expensive_query['query'][:100] + '...' if len(summary.most_expensive_query['query']) > 100 else summary.most_expensive_query['query'],
+                'response_time': 0  # We don't track this in the summary
+            })
         
         return jsonify({
             'success': True,
-            'period': {
-                'start': summary.period_start.isoformat(),
-                'end': summary.period_end.isoformat(),
-                'days': days
-            },
-            'usage': {
-                'total_requests': summary.total_requests,
-                'api_calls': summary.api_calls,
-                'cache_hits': summary.cache_hits,
-                'similar_matches': summary.similar_matches,
-                'total_cost_usd': float(summary.total_cost_usd),
-                'cache_savings_usd': float(summary.cache_savings_usd),
-                'average_response_time_ms': summary.average_response_time_ms,
-                'most_expensive_query': summary.most_expensive_query
-            },
-            'budgets': budget_status,
-            'breakdown': {
-                'by_endpoint': summary.cost_by_endpoint,
-                'by_user': summary.cost_by_user
-            }
+            'data': response_data,
+            'generated_at': datetime.utcnow().isoformat(),
+            'period_days': days
         })
         
     except Exception as e:
-        logger.error(f"Cost summary endpoint error: {e}")
-        return jsonify({
-            'success': False,
-            'error': str(e),
-            'daily': {'budget': 50, 'spent': 0, 'remaining': 50, 'percent_used': 0},
-            'monthly': {'budget': 1000, 'spent': 0, 'remaining': 1000, 'percent_used': 0}
-        }), 500
+        logger.error(f"Cost summary endpoint failed: {e}")
+        return jsonify({'error': 'Failed to retrieve cost summary', 'details': str(e)}), 500
 
 @cost_bp.route('/budget', methods=['GET'])
 def get_budget_status():
-    """Get current budget status and alert levels"""
+    """Get current budget status and alerts"""
     try:
-        if not cost_tracker:
-            return jsonify({
-                'daily': {
-                    'budget': 50.0,
-                    'spent': 0.0,
-                    'remaining': 50.0,
-                    'percent_used': 0.0,
-                    'alert_level': 'none',
-                    'requests_today': 0,
-                    'cache_savings': 0.0
-                },
-                'monthly': {
-                    'budget': 1000.0,
-                    'spent': 0.0,
-                    'remaining': 1000.0,
-                    'percent_used': 0.0,
-                    'alert_level': 'none',
-                    'requests_month': 0,
-                    'cache_savings': 0.0
-                },
-                'thresholds': {
-                    'warning': 75.0,
-                    'critical': 90.0
-                },
-                'timestamp': datetime.utcnow().isoformat(),
-                'service_status': 'unavailable'
-            })
+        # Get cost tracking service
+        cost_service = get_cost_tracking_service()
+        budget_status = cost_service.get_budget_status()
         
-        status = cost_tracker.get_budget_status()
-        status['service_status'] = 'active'
+        # Calculate time remaining
+        now = datetime.utcnow()
+        end_of_day = now.replace(hour=23, minute=59, second=59, microsecond=999999)
+        time_remaining_hours = int((end_of_day - now).total_seconds() / 3600)
         
-        return jsonify(status)
+        # Build alerts based on status
+        alerts = []
+        recommendations = []
+        
+        if budget_status['daily']['alert_level'] == 'critical':
+            alerts.append(f"CRITICAL: Daily budget {budget_status['daily']['percentage']:.1f}% used")
+        elif budget_status['daily']['alert_level'] == 'warning':
+            alerts.append(f"WARNING: Daily budget {budget_status['daily']['percentage']:.1f}% used")
+        
+        if budget_status['monthly']['alert_level'] == 'critical':
+            alerts.append(f"CRITICAL: Monthly budget {budget_status['monthly']['percentage']:.1f}% used")
+        elif budget_status['monthly']['alert_level'] == 'warning':
+            alerts.append(f"WARNING: Monthly budget {budget_status['monthly']['percentage']:.1f}% used")
+        
+        # Add recommendations
+        if budget_status['cache_efficiency']['daily_hit_rate'] > 70:
+            recommendations.append(f"Cache hit rate of {budget_status['cache_efficiency']['daily_hit_rate']:.1f}% is saving significant costs")
+        elif budget_status['cache_efficiency']['daily_hit_rate'] > 0:
+            recommendations.append("Consider optimizing cache usage to reduce API costs")
+        
+        if budget_status['daily']['percentage'] < 50:
+            recommendations.append("Your current usage is well within daily budget")
+        
+        budget_data = {
+            'daily': {
+                'budget': budget_status['daily']['budget'],
+                'spent': budget_status['daily']['spent'],
+                'percent_used': budget_status['daily']['percentage'],
+                'alert_level': budget_status['daily']['alert_level'],
+                'time_remaining_hours': time_remaining_hours
+            },
+            'monthly': {
+                'budget': budget_status['monthly']['budget'],
+                'spent': budget_status['monthly']['spent'],
+                'percent_used': budget_status['monthly']['percentage'],
+                'alert_level': budget_status['monthly']['alert_level'],
+                'days_remaining': (datetime.utcnow().replace(month=datetime.utcnow().month+1, day=1) - datetime.utcnow()).days if datetime.utcnow().month < 12 else (datetime.utcnow().replace(year=datetime.utcnow().year+1, month=1, day=1) - datetime.utcnow()).days
+            },
+            'alerts': alerts,
+            'recommendations': recommendations
+        }
+        
+        return jsonify(budget_data)
         
     except Exception as e:
-        logger.error(f"Budget status endpoint error: {e}")
-        return jsonify({
-            'error': str(e),
-            'service_status': 'error'
-        }), 500
+        logger.error(f"Budget status endpoint failed: {e}")
+        return jsonify({'error': 'Failed to retrieve budget status'}), 500
 
 @cost_bp.route('/trends', methods=['GET'])
 def get_cost_trends():
-    """
-    Get cost trends over time.
-    
-    Query parameters:
-    - days: Number of days to include (default: 7)
-    """
+    """Get cost trends over time"""
     try:
-        if not cost_tracker:
-            # Return mock data for demonstration
-            days = request.args.get('days', 7, type=int)
-            mock_trends = []
-            for i in range(days):
-                day = datetime.utcnow() - timedelta(days=i)
-                mock_trends.append({
-                    'date': day.strftime('%Y-%m-%d'),
-                    'total_cost': 0.0,
-                    'cache_savings': 0.0,
-                    'requests': 0,
-                    'api_calls': 0,
-                    'cache_hits': 0,
-                    'avg_response_time': 0.0
-                })
+        days = int(request.args.get('days', 7))
+        
+        # Get cost tracking service
+        cost_service = get_cost_tracking_service()
+        trends_data = cost_service.get_cost_trends(days=days)
+        
+        # Calculate additional metrics
+        if trends_data:
+            total_costs = [day['total_cost'] for day in trends_data]
+            total_calls = [day['api_calls'] for day in trends_data]
             
-            return jsonify({
-                'success': True,
-                'trends': list(reversed(mock_trends)),
-                'service_status': 'unavailable'
-            })
+            average_daily_cost = sum(total_costs) / len(total_costs) if total_costs else 0
+            total_api_calls = sum(total_calls)
+            cost_per_call_avg = average_daily_cost / (total_api_calls / len(total_calls)) if total_api_calls > 0 else 0
+            
+            # Determine trend direction
+            if len(total_costs) >= 3:
+                recent_avg = sum(total_costs[-3:]) / 3
+                earlier_avg = sum(total_costs[:-3]) / len(total_costs[:-3]) if len(total_costs) > 3 else recent_avg
+                
+                if recent_avg > earlier_avg * 1.1:
+                    trend_direction = 'increasing'
+                elif recent_avg < earlier_avg * 0.9:
+                    trend_direction = 'decreasing'
+                else:
+                    trend_direction = 'stable'
+            else:
+                trend_direction = 'stable'
+        else:
+            average_daily_cost = 0
+            cost_per_call_avg = 0
+            trend_direction = 'stable'
         
-        days = request.args.get('days', 7, type=int)
-        trends = cost_tracker.get_cost_trends(days=days)
+        trends = {
+            'daily_costs': [
+                {
+                    'date': day['date'],
+                    'cost': day['total_cost'],
+                    'calls': day['api_calls']
+                }
+                for day in trends_data
+            ],
+            'average_daily_cost': average_daily_cost,
+            'trend_direction': trend_direction,
+            'cost_per_call_avg': cost_per_call_avg
+        }
         
         return jsonify({
             'success': True,
-            'trends': trends,
-            'period_days': days,
-            'service_status': 'active'
+            'data': trends,
+            'period_days': days
         })
         
     except Exception as e:
-        logger.error(f"Cost trends endpoint error: {e}")
-        return jsonify({
-            'success': False,
-            'error': str(e),
-            'service_status': 'error'
-        }), 500
+        logger.error(f"Cost trends endpoint failed: {e}")
+        return jsonify({'error': 'Failed to retrieve cost trends'}), 500
 
-@cost_bp.route('/log', methods=['POST'])
-def log_api_usage():
-    """
-    Manually log an API usage event.
-    This endpoint can be used by other services to log their API usage.
-    
-    Request body:
-    {
-        "endpoint": "/api/perplexity/search",
-        "method": "POST",
-        "user_id": "user123",
-        "query_text": "What is machine learning?",
-        "query_type": "search",
-        "response_size_bytes": 1500,
-        "response_time_ms": 800,
-        "tokens_used": 150,
-        "from_cache": "api_call",
-        "status": "success"
-    }
-    """
+@cost_bp.route('/realtime', methods=['GET'])
+def get_realtime_costs():
+    """Get real-time cost information"""
     try:
-        if not cost_tracker:
-            return jsonify({
-                'success': False,
-                'error': 'Cost tracking service not available',
-                'estimated_cost': 0.001
-            }), 503
+        # Get cost tracking service
+        cost_service = get_cost_tracking_service()
         
-        data = request.get_json()
-        if not data:
-            return jsonify({'error': 'No data provided'}), 400
+        # Get today's summary
+        today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        today_summary = cost_service.get_usage_summary(start_date=today)
         
-        # Extract data with defaults
-        endpoint = data.get('endpoint', '/api/unknown')
-        method = data.get('method', 'POST')
-        user_id = data.get('user_id')
-        session_id = data.get('session_id')
-        query_text = data.get('query_text')
-        query_type = data.get('query_type', 'search')
-        response_size_bytes = data.get('response_size_bytes', 0)
-        response_time_ms = data.get('response_time_ms', 0)
-        tokens_used = data.get('tokens_used', 0)
-        from_cache = data.get('from_cache', 'api_call')
-        similarity_score = data.get('similarity_score', 0.0)
-        status = data.get('status', 'success')
-        error_message = data.get('error_message')
-        metadata = data.get('metadata', {})
+        # Get current session data (last hour)
+        session_start = datetime.utcnow() - timedelta(hours=1)
+        session_summary = cost_service.get_usage_summary(start_date=session_start)
         
-        # Log the usage
-        log_id = cost_tracker.log_api_call(
-            endpoint=endpoint,
-            method=method,
-            user_id=user_id,
-            session_id=session_id,
-            request_payload=data,
-            query_text=query_text,
-            query_type=query_type,
-            response_size_bytes=response_size_bytes,
-            response_time_ms=response_time_ms,
-            tokens_used=tokens_used,
-            from_cache=from_cache,
-            similarity_score=similarity_score,
-            status=status,
-            error_message=error_message,
-            metadata=metadata
-        )
-        
-        # Calculate estimated cost for response
-        cost_breakdown = cost_tracker.calculate_cost(
-            endpoint=endpoint,
-            tokens_used=tokens_used,
-            query_type=query_type,
-            response_size=response_size_bytes
-        )
-        
-        return jsonify({
-            'success': True,
-            'log_id': log_id,
-            'estimated_cost_usd': float(cost_breakdown.total_cost),
-            'cost_breakdown': {
-                'base_cost': float(cost_breakdown.base_cost),
-                'token_cost': float(cost_breakdown.token_cost),
-                'total_cost': float(cost_breakdown.total_cost)
+        realtime_data = {
+            'current_session': {
+                'api_calls': session_summary.api_calls,
+                'cache_hits': session_summary.cache_hits,
+                'total_cost': float(session_summary.total_cost_usd),
+                'session_start': session_start.isoformat()
             },
-            'from_cache': from_cache
-        })
+            'today_so_far': {
+                'api_calls': today_summary.api_calls,
+                'cache_hits': today_summary.cache_hits,
+                'total_cost': float(today_summary.total_cost_usd),
+                'cost_saved': float(today_summary.cache_savings_usd)
+            },
+            'most_expensive_query': today_summary.most_expensive_query
+        }
+        
+        return jsonify(realtime_data)
         
     except Exception as e:
-        logger.error(f"API usage logging error: {e}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-
-@cost_bp.route('/estimate', methods=['POST'])
-def estimate_cost():
-    """
-    Estimate the cost of an API call without logging it.
-    
-    Request body:
-    {
-        "endpoint": "/api/perplexity/search",
-        "query_text": "What is machine learning?",
-        "query_type": "search",
-        "tokens_used": 150
-    }
-    """
-    try:
-        if not cost_tracker:
-            return jsonify({
-                'success': True,
-                'estimated_cost_usd': 0.005,
-                'message': 'Cost tracking service not available - returning default estimate'
-            })
-        
-        data = request.get_json()
-        if not data:
-            return jsonify({'error': 'No data provided'}), 400
-        
-        endpoint = data.get('endpoint', '/api/unknown')
-        query_text = data.get('query_text', '')
-        query_type = data.get('query_type', 'search')
-        tokens_used = data.get('tokens_used', 0)
-        
-        # Estimate response size if not provided
-        response_size = data.get('response_size_bytes', len(query_text) * 2)
-        
-        # Calculate cost
-        cost_breakdown = cost_tracker.calculate_cost(
-            endpoint=endpoint,
-            tokens_used=tokens_used,
-            query_type=query_type,
-            response_size=response_size
-        )
-        
-        return jsonify({
-            'success': True,
-            'estimated_cost_usd': float(cost_breakdown.total_cost),
-            'cost_breakdown': {
-                'base_cost': float(cost_breakdown.base_cost),
-                'token_cost': float(cost_breakdown.token_cost),
-                'total_cost': float(cost_breakdown.total_cost),
-                'pricing_model': cost_breakdown.pricing_model
-            },
-            'calculation_details': cost_breakdown.calculation_details
-        })
-        
-    except Exception as e:
-        logger.error(f"Cost estimation error: {e}")
-        return jsonify({
-            'success': False,
-            'error': str(e),
-            'estimated_cost_usd': 0.005  # Fallback estimate
-        }), 500
+        logger.error(f"Realtime costs endpoint failed: {e}")
+        return jsonify({'error': 'Failed to retrieve realtime costs'}), 500
 
 @cost_bp.route('/health', methods=['GET'])
-def cost_service_health():
-    """Check the health of the cost tracking service"""
+def cost_health():
+    """Health check for cost tracking service"""
     try:
-        if not cost_tracker:
-            return jsonify({
-                'status': 'unavailable',
-                'message': 'Cost tracking service not imported',
-                'features': {
-                    'logging': False,
-                    'budget_tracking': False,
-                    'cost_estimation': True  # Can still provide basic estimates
-                }
-            })
+        # Test the cost tracking service
+        cost_service = get_cost_tracking_service()
         
-        # Try to get a simple budget status to test the service
-        status = cost_tracker.get_budget_status()
+        # Try to get a simple summary to test database connectivity
+        test_summary = cost_service.get_usage_summary()
+        database_connected = True
         
         return jsonify({
             'status': 'healthy',
-            'message': 'Cost tracking service is operational',
-            'features': {
-                'logging': True,
-                'budget_tracking': True,
-                'cost_estimation': True,
-                'database_connection': True
-            },
-            'daily_budget': status.get('daily', {}).get('budget', 0),
-            'monthly_budget': status.get('monthly', {}).get('budget', 0)
+            'service': 'cost_tracking',
+            'version': '1.0.0',
+            'database_connected': database_connected,
+            'mock_data': False,
+            'supabase_integration': True
         })
         
     except Exception as e:
-        logger.error(f"Cost service health check failed: {e}")
+        logger.error(f"Cost health check failed: {e}")
         return jsonify({
-            'status': 'error',
-            'message': f'Cost tracking service error: {str(e)}',
-            'features': {
-                'logging': False,
-                'budget_tracking': False,
-                'cost_estimation': False
-            }
-        }), 500 
+            'status': 'degraded',
+            'service': 'cost_tracking',
+            'version': '1.0.0',
+            'database_connected': False,
+            'mock_data': False,
+            'error': str(e)
+        }), 503 

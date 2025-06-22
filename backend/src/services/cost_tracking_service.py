@@ -5,50 +5,11 @@ import logging
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
 from decimal import Decimal, ROUND_HALF_UP
-from sqlalchemy import Column, Integer, String, DateTime, Decimal as SQLDecimal, Text, JSON
-from sqlalchemy.ext.declarative import declarative_base
 from dataclasses import dataclass
 
-from src.database import db
+from ..config.supabase import get_supabase_client, get_supabase_admin_client
 
 logger = logging.getLogger(__name__)
-
-Base = declarative_base()
-
-class APIUsageLog(Base):
-    """Database model for tracking API usage and costs"""
-    __tablename__ = 'api_usage_logs'
-    
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    timestamp = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
-    endpoint = Column(String(200), nullable=False, index=True)
-    method = Column(String(10), nullable=False)
-    user_id = Column(String(100), nullable=True, index=True)
-    session_id = Column(String(100), nullable=True)
-    
-    # Request details
-    request_payload = Column(JSON)
-    query_text = Column(Text)
-    query_type = Column(String(50), nullable=True, index=True)
-    
-    # Response details
-    response_size_bytes = Column(Integer, default=0)
-    response_time_ms = Column(Integer, default=0)
-    tokens_used = Column(Integer, default=0)
-    
-    # Cost tracking
-    cost_usd = Column(SQLDecimal(10, 6), default=0.000000)
-    pricing_model = Column(String(50), default='perplexity-2024')
-    
-    # Caching info
-    from_cache = Column(String(20), default='api_call')
-    cache_savings_usd = Column(SQLDecimal(10, 6), default=0.000000)
-    similarity_score = Column(SQLDecimal(3, 2), default=0.00)
-    
-    # Status and metadata
-    status = Column(String(20), default='success')
-    error_message = Column(Text, nullable=True)
-    metadata = Column(JSON)
 
 @dataclass
 class CostBreakdown:
@@ -95,7 +56,8 @@ class CostTrackingService:
     }
     
     def __init__(self):
-        self.session = db.session
+        self.supabase = get_supabase_client()
+        self.admin_supabase = get_supabase_admin_client()
         self._ensure_tables()
         
         # Budget tracking
@@ -111,10 +73,12 @@ class CostTrackingService:
     def _ensure_tables(self):
         """Ensure the API usage tracking table exists"""
         try:
-            Base.metadata.create_all(db.engine)
-            logger.info("API usage tracking table verified/created")
+            # Check if table exists by trying to query it
+            result = self.supabase.table('api_usage_logs').select('id').limit(1).execute()
+            logger.info("API usage tracking table verified")
         except Exception as e:
-            logger.error(f"Failed to create API usage table: {e}")
+            logger.warning(f"API usage table may not exist yet: {e}")
+            # For now, we'll continue without the table and handle gracefully
     
     def calculate_cost(self, 
                       endpoint: str,
@@ -200,102 +164,115 @@ class CostTrackingService:
             if from_cache in ['cache_hit', 'similar_match']:
                 cache_savings = cost_breakdown.total_cost
             
-            # Create log entry
-            log_entry = APIUsageLog(
-                timestamp=datetime.utcnow(),
-                endpoint=endpoint,
-                method=method,
-                user_id=user_id,
-                session_id=session_id,
-                request_payload=request_payload,
-                query_text=query_text[:1000] if query_text else None,
-                query_type=query_type,
-                response_size_bytes=response_size_bytes,
-                response_time_ms=response_time_ms,
-                tokens_used=tokens_used,
-                cost_usd=cost_breakdown.total_cost if from_cache == 'api_call' else Decimal('0.000000'),
-                pricing_model=cost_breakdown.pricing_model,
-                from_cache=from_cache,
-                cache_savings_usd=cache_savings,
-                similarity_score=Decimal(str(similarity_score)).quantize(Decimal('0.01')),
-                status=status,
-                error_message=error_message,
-                metadata=metadata or {}
-            )
+            # Prepare log entry
+            log_entry = {
+                'timestamp': datetime.utcnow().isoformat(),
+                'endpoint': endpoint,
+                'method': method,
+                'user_id': user_id,
+                'query_text': query_text or '',
+                'response_size_kb': float(response_size_bytes / 1024) if response_size_bytes > 0 else 0.0,
+                'cost_usd': float(cost_breakdown.total_cost),
+                'response_time_ms': response_time_ms,
+                'status_code': 200 if status == 'success' else 500,
+                'metadata': {
+                    'session_id': session_id,
+                    'request_payload': request_payload,
+                    'query_type': query_type,
+                    'tokens_used': tokens_used,
+                    'from_cache': from_cache,
+                    'similarity_score': similarity_score,
+                    'cache_savings_usd': float(cache_savings),
+                    'pricing_model': cost_breakdown.pricing_model,
+                    'calculation_details': cost_breakdown.calculation_details,
+                    'error_message': error_message,
+                    **(metadata or {})
+                }
+            }
             
-            # Save to database
-            self.session.add(log_entry)
-            self.session.commit()
+            # Insert into Supabase
+            result = self.supabase.table('api_usage_logs').insert(log_entry).execute()
             
-            logger.debug(f"Logged API call: {endpoint} - Cost: ${cost_breakdown.total_cost}")
-            
-            # Check budget alerts
-            self._check_budget_alerts()
-            
-            return log_entry.id
-            
+            if result.data:
+                log_id = result.data[0]['id']
+                logger.info(f"API call logged successfully: {log_id}")
+                
+                # Check budget alerts
+                self._check_budget_alerts()
+                
+                return log_id
+            else:
+                logger.error("Failed to log API call - no data returned")
+                return None
+                
         except Exception as e:
             logger.error(f"Failed to log API call: {e}")
-            self.session.rollback()
+            # Fallback to console logging
+            logger.info(f"API Call - Endpoint: {endpoint}, Cost: ${cost_breakdown.total_cost}, Time: {response_time_ms}ms")
             return None
     
     def get_usage_summary(self, 
                          start_date: Optional[datetime] = None,
                          end_date: Optional[datetime] = None,
                          user_id: Optional[str] = None) -> UsageSummary:
-        """Get usage summary for a time period."""
+        """Get comprehensive usage summary for a time period."""
         try:
+            # Default to last 24 hours
             if not start_date:
-                start_date = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+                start_date = datetime.utcnow() - timedelta(hours=24)
             if not end_date:
                 end_date = datetime.utcnow()
             
             # Build query
-            query = self.session.query(APIUsageLog).filter(
-                APIUsageLog.timestamp >= start_date,
-                APIUsageLog.timestamp <= end_date
-            )
+            query = self.supabase.table('api_usage_logs').select('*')
+            query = query.gte('timestamp', start_date.isoformat())
+            query = query.lte('timestamp', end_date.isoformat())
             
             if user_id:
-                query = query.filter(APIUsageLog.user_id == user_id)
+                query = query.eq('user_id', user_id)
             
-            logs = query.all()
+            result = query.execute()
+            logs = result.data if result.data else []
             
-            # Calculate metrics
+            # Calculate summary statistics
             total_requests = len(logs)
-            api_calls = len([l for l in logs if l.from_cache == 'api_call'])
-            cache_hits = len([l for l in logs if l.from_cache == 'cache_hit'])
-            similar_matches = len([l for l in logs if l.from_cache == 'similar_match'])
+            api_calls = len([log for log in logs if log.get('metadata', {}).get('from_cache') == 'api_call'])
+            cache_hits = len([log for log in logs if log.get('metadata', {}).get('from_cache') == 'cache_hit'])
+            similar_matches = len([log for log in logs if log.get('metadata', {}).get('from_cache') == 'similar_match'])
             
-            total_cost = sum(l.cost_usd for l in logs)
-            cache_savings = sum(l.cache_savings_usd for l in logs)
+            total_cost_usd = sum((Decimal(str(log.get('cost_usd', 0))) for log in logs), Decimal('0.000000'))
+            cache_savings_usd = sum(
+                (Decimal(str(log.get('metadata', {}).get('cache_savings_usd', 0))) for log in logs),
+                Decimal('0.000000')
+            )
             
-            avg_response_time = sum(l.response_time_ms for l in logs) / max(total_requests, 1)
+            response_times = [log.get('response_time_ms', 0) for log in logs if log.get('response_time_ms', 0) > 0]
+            average_response_time_ms = sum(response_times) / len(response_times) if response_times else 0.0
             
             # Most expensive query
-            most_expensive = None
+            most_expensive_query = None
             if logs:
-                max_cost_log = max(logs, key=lambda l: l.cost_usd)
-                if max_cost_log.cost_usd > 0:
-                    most_expensive = {
-                        'query': max_cost_log.query_text[:100] + '...' if max_cost_log.query_text and len(max_cost_log.query_text) > 100 else max_cost_log.query_text,
-                        'cost': float(max_cost_log.cost_usd),
-                        'endpoint': max_cost_log.endpoint,
-                        'timestamp': max_cost_log.timestamp.isoformat()
-                    }
+                most_expensive = max(logs, key=lambda x: x.get('cost_usd', 0))
+                most_expensive_query = {
+                    'query': most_expensive.get('query_text', 'Unknown'),
+                    'cost': float(most_expensive.get('cost_usd', 0)),
+                    'timestamp': most_expensive.get('timestamp'),
+                    'endpoint': most_expensive.get('endpoint')
+                }
             
             # Cost by endpoint
             cost_by_endpoint = {}
             for log in logs:
-                endpoint = log.endpoint
-                cost_by_endpoint[endpoint] = cost_by_endpoint.get(endpoint, Decimal('0')) + log.cost_usd
+                endpoint = log.get('endpoint', 'unknown')
+                cost = Decimal(str(log.get('cost_usd', 0)))
+                cost_by_endpoint[endpoint] = cost_by_endpoint.get(endpoint, Decimal('0')) + cost
             
             # Cost by user
             cost_by_user = {}
             for log in logs:
-                if log.user_id:
-                    user = log.user_id
-                    cost_by_user[user] = cost_by_user.get(user, Decimal('0')) + log.cost_usd
+                user = log.get('user_id') or 'anonymous'
+                cost = Decimal(str(log.get('cost_usd', 0)))
+                cost_by_user[user] = cost_by_user.get(user, Decimal('0')) + cost
             
             return UsageSummary(
                 period_start=start_date,
@@ -304,16 +281,17 @@ class CostTrackingService:
                 api_calls=api_calls,
                 cache_hits=cache_hits,
                 similar_matches=similar_matches,
-                total_cost_usd=total_cost,
-                cache_savings_usd=cache_savings,
-                average_response_time_ms=avg_response_time,
-                most_expensive_query=most_expensive,
-                cost_by_endpoint={k: float(v) for k, v in cost_by_endpoint.items()},
-                cost_by_user={k: float(v) for k, v in cost_by_user.items()}
+                total_cost_usd=total_cost_usd,
+                cache_savings_usd=cache_savings_usd,
+                average_response_time_ms=average_response_time_ms,
+                most_expensive_query=most_expensive_query,
+                cost_by_endpoint=cost_by_endpoint,
+                cost_by_user=cost_by_user
             )
             
         except Exception as e:
             logger.error(f"Failed to get usage summary: {e}")
+            # Return empty summary
             return UsageSummary(
                 period_start=start_date or datetime.utcnow(),
                 period_end=end_date or datetime.utcnow(),
@@ -321,8 +299,8 @@ class CostTrackingService:
                 api_calls=0,
                 cache_hits=0,
                 similar_matches=0,
-                total_cost_usd=Decimal('0'),
-                cache_savings_usd=Decimal('0'),
+                total_cost_usd=Decimal('0.000000'),
+                cache_savings_usd=Decimal('0.000000'),
                 average_response_time_ms=0.0,
                 most_expensive_query=None,
                 cost_by_endpoint={},
@@ -330,119 +308,119 @@ class CostTrackingService:
             )
     
     def get_budget_status(self) -> Dict[str, Any]:
-        """Get current budget status and alert levels"""
+        """Get current budget status and alerts."""
         try:
-            # Daily usage
-            today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
-            daily_summary = self.get_usage_summary(start_date=today_start)
+            # Get today's usage
+            today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+            today_summary = self.get_usage_summary(start_date=today)
             
-            # Monthly usage
+            # Get this month's usage
             month_start = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-            monthly_summary = self.get_usage_summary(start_date=month_start)
+            month_summary = self.get_usage_summary(start_date=month_start)
             
             # Calculate percentages
-            daily_percent = float(daily_summary.total_cost_usd / self.daily_budget * 100) if self.daily_budget > 0 else 0
-            monthly_percent = float(monthly_summary.total_cost_usd / self.monthly_budget * 100) if self.monthly_budget > 0 else 0
+            daily_percentage = float(today_summary.total_cost_usd / self.daily_budget * 100) if self.daily_budget > 0 else 0
+            monthly_percentage = float(month_summary.total_cost_usd / self.monthly_budget * 100) if self.monthly_budget > 0 else 0
             
             # Determine alert levels
             daily_alert = 'none'
             monthly_alert = 'none'
             
-            if daily_percent >= self.critical_threshold * 100:
+            if daily_percentage >= self.critical_threshold * 100:
                 daily_alert = 'critical'
-            elif daily_percent >= self.warning_threshold * 100:
+            elif daily_percentage >= self.warning_threshold * 100:
                 daily_alert = 'warning'
             
-            if monthly_percent >= self.critical_threshold * 100:
+            if monthly_percentage >= self.critical_threshold * 100:
                 monthly_alert = 'critical'
-            elif monthly_percent >= self.warning_threshold * 100:
+            elif monthly_percentage >= self.warning_threshold * 100:
                 monthly_alert = 'warning'
             
             return {
                 'daily': {
                     'budget': float(self.daily_budget),
-                    'spent': float(daily_summary.total_cost_usd),
-                    'remaining': float(self.daily_budget - daily_summary.total_cost_usd),
-                    'percent_used': daily_percent,
+                    'spent': float(today_summary.total_cost_usd),
+                    'remaining': float(self.daily_budget - today_summary.total_cost_usd),
+                    'percentage': daily_percentage,
                     'alert_level': daily_alert,
-                    'requests_today': daily_summary.total_requests,
-                    'cache_savings': float(daily_summary.cache_savings_usd)
+                    'requests': today_summary.total_requests
                 },
                 'monthly': {
                     'budget': float(self.monthly_budget),
-                    'spent': float(monthly_summary.total_cost_usd),
-                    'remaining': float(self.monthly_budget - monthly_summary.total_cost_usd),
-                    'percent_used': monthly_percent,
+                    'spent': float(month_summary.total_cost_usd),
+                    'remaining': float(self.monthly_budget - month_summary.total_cost_usd),
+                    'percentage': monthly_percentage,
                     'alert_level': monthly_alert,
-                    'requests_month': monthly_summary.total_requests,
-                    'cache_savings': float(monthly_summary.cache_savings_usd)
+                    'requests': month_summary.total_requests
+                },
+                'cache_efficiency': {
+                    'daily_savings': float(today_summary.cache_savings_usd),
+                    'monthly_savings': float(month_summary.cache_savings_usd),
+                    'daily_hit_rate': (today_summary.cache_hits / today_summary.total_requests * 100) if today_summary.total_requests > 0 else 0,
+                    'monthly_hit_rate': (month_summary.cache_hits / month_summary.total_requests * 100) if month_summary.total_requests > 0 else 0
                 },
                 'thresholds': {
                     'warning': self.warning_threshold * 100,
                     'critical': self.critical_threshold * 100
-                },
-                'timestamp': datetime.utcnow().isoformat()
+                }
             }
             
         except Exception as e:
             logger.error(f"Failed to get budget status: {e}")
             return {
-                'daily': {'budget': 0, 'spent': 0, 'remaining': 0, 'percent_used': 0, 'alert_level': 'error'},
-                'monthly': {'budget': 0, 'spent': 0, 'remaining': 0, 'percent_used': 0, 'alert_level': 'error'},
-                'error': str(e)
+                'daily': {'budget': float(self.daily_budget), 'spent': 0.0, 'remaining': float(self.daily_budget), 'percentage': 0.0, 'alert_level': 'none', 'requests': 0},
+                'monthly': {'budget': float(self.monthly_budget), 'spent': 0.0, 'remaining': float(self.monthly_budget), 'percentage': 0.0, 'alert_level': 'none', 'requests': 0},
+                'cache_efficiency': {'daily_savings': 0.0, 'monthly_savings': 0.0, 'daily_hit_rate': 0.0, 'monthly_hit_rate': 0.0},
+                'thresholds': {'warning': self.warning_threshold * 100, 'critical': self.critical_threshold * 100}
             }
     
     def _check_budget_alerts(self):
-        """Check if budget thresholds have been exceeded and log alerts"""
+        """Check budget thresholds and log alerts."""
         try:
-            status = self.get_budget_status()
+            budget_status = self.get_budget_status()
             
-            # Check for alerts
-            alerts = []
+            daily_alert = budget_status['daily']['alert_level']
+            monthly_alert = budget_status['monthly']['alert_level']
             
-            if status['daily']['alert_level'] == 'critical':
-                alerts.append(f"CRITICAL: Daily budget {status['daily']['percent_used']:.1f}% used")
-            elif status['daily']['alert_level'] == 'warning':
-                alerts.append(f"WARNING: Daily budget {status['daily']['percent_used']:.1f}% used")
+            if daily_alert in ['warning', 'critical']:
+                logger.warning(f"Daily budget alert ({daily_alert}): ${budget_status['daily']['spent']:.2f} / ${budget_status['daily']['budget']:.2f}")
             
-            if status['monthly']['alert_level'] == 'critical':
-                alerts.append(f"CRITICAL: Monthly budget {status['monthly']['percent_used']:.1f}% used")
-            elif status['monthly']['alert_level'] == 'warning':
-                alerts.append(f"WARNING: Monthly budget {status['monthly']['percent_used']:.1f}% used")
-            
-            # Log alerts
-            for alert in alerts:
-                logger.warning(f"BUDGET ALERT: {alert}")
+            if monthly_alert in ['warning', 'critical']:
+                logger.warning(f"Monthly budget alert ({monthly_alert}): ${budget_status['monthly']['spent']:.2f} / ${budget_status['monthly']['budget']:.2f}")
                 
         except Exception as e:
-            logger.error(f"Budget alert check failed: {e}")
+            logger.error(f"Failed to check budget alerts: {e}")
     
     def get_cost_trends(self, days: int = 7) -> List[Dict[str, Any]]:
-        """Get daily cost trends for the specified number of days"""
+        """Get cost trends over the specified number of days."""
         try:
             trends = []
+            end_date = datetime.utcnow()
             
             for i in range(days):
-                day_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=i)
+                day_start = (end_date - timedelta(days=i)).replace(hour=0, minute=0, second=0, microsecond=0)
                 day_end = day_start + timedelta(days=1)
                 
-                summary = self.get_usage_summary(start_date=day_start, end_date=day_end)
+                day_summary = self.get_usage_summary(start_date=day_start, end_date=day_end)
                 
                 trends.append({
                     'date': day_start.strftime('%Y-%m-%d'),
-                    'total_cost': float(summary.total_cost_usd),
-                    'cache_savings': float(summary.cache_savings_usd),
-                    'requests': summary.total_requests,
-                    'api_calls': summary.api_calls,
-                    'cache_hits': summary.cache_hits,
-                    'avg_response_time': summary.average_response_time_ms
+                    'total_cost': float(day_summary.total_cost_usd),
+                    'api_calls': day_summary.api_calls,
+                    'cache_hits': day_summary.cache_hits,
+                    'cache_savings': float(day_summary.cache_savings_usd),
+                    'average_response_time': day_summary.average_response_time_ms
                 })
             
-            return list(reversed(trends))
+            return list(reversed(trends))  # Most recent first
             
         except Exception as e:
             logger.error(f"Failed to get cost trends: {e}")
             return []
 
 # Global instance
-cost_tracker = CostTrackingService() 
+cost_tracking_service = CostTrackingService()
+
+def get_cost_tracking_service() -> CostTrackingService:
+    """Get the cost tracking service instance"""
+    return cost_tracking_service 

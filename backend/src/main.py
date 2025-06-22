@@ -1,5 +1,10 @@
 import os
 import sys
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
 # DON'T CHANGE THIS !!!
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
@@ -57,6 +62,27 @@ try:
 except Exception as e:
     print(f"❌ Cost tracking blueprint import failed: {e}")
     cost_bp = None
+
+try:
+    from src.routes.fast_fail_api import fast_fail_bp
+    print("✅ Fast-Fail API blueprint imported")
+except Exception as e:
+    print(f"❌ Fast-Fail API blueprint import failed: {e}")
+    fast_fail_bp = None
+
+try:
+    from src.routes.win_probability_api import win_probability_bp
+    print("✅ Win Probability API blueprint imported")
+except Exception as e:
+    print(f"❌ Win Probability API blueprint import failed: {e}")
+    win_probability_bp = None
+
+try:
+    from src.routes.compliance_api import compliance_bp
+    print("✅ Compliance API blueprint imported")
+except Exception as e:
+    print(f"❌ Compliance API blueprint import failed: {e}")
+    compliance_bp = None
 # Analytics service
 from datetime import datetime, timedelta
 import random
@@ -242,7 +268,10 @@ blueprints = [
     (perplexity_bp, 'perplexity'),
     (performance_bp, 'performance'),
     (trend_bp, 'trend_analysis'),
-    (cost_bp, 'cost_tracking')
+    (cost_bp, 'cost_tracking'),
+    (fast_fail_bp, 'fast_fail'),
+    (win_probability_bp, 'win_probability'),
+    (compliance_bp, 'compliance')
 ]
 
 for blueprint, name in blueprints:
@@ -654,4 +683,4 @@ def get_opportunities_working():
         return jsonify({'error': f'Failed to fetch opportunities: {str(e)}'}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5001, debug=True)
+    app.run(host='0.0.0.0', port=5002, debug=True)
