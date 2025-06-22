@@ -3,7 +3,7 @@
  * Uses user context and history to improve search relevance and reduce redundant queries
  */
 import { useState, useEffect, useRef } from 'react'
-import { Search, History, Zap, Brain, DollarSign, Clock, Target, BookOpen } from 'lucide-react'
+import { Search, History, Zap, Brain, DollarSign, Clock, Target, BookOpen, RefreshCw } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -21,8 +21,17 @@ import {
 } from '@/lib/perplexityTemplates'
 import { usePerplexityCache } from '@/hooks/usePerplexityCache'
 
-export default function ContextAwareSearch({ onSearch, onTemplateUse, userContext = {}, searchHistory = [] }) {
-  const [searchQuery, setSearchQuery] = useState('')
+export default function ContextAwareSearch({ 
+  onSearch, 
+  onTemplateUse, 
+  onTemplateSearch,
+  userContext = {}, 
+  searchHistory = [],
+  query = '',
+  onQueryChange,
+  loading = false
+}) {
+  const [searchQuery, setSearchQuery] = useState(query)
   const [selectedTemplate, setSelectedTemplate] = useState(null)
   const [templateParams, setTemplateParams] = useState({})
   const [activeCategory, setActiveCategory] = useState('Market Research')
@@ -30,6 +39,11 @@ export default function ContextAwareSearch({ onSearch, onTemplateUse, userContex
   const [smartSuggestions, setSmartSuggestions] = useState([])
   
   const { getCachedData, cacheStats, QUERY_TYPES } = usePerplexityCache()
+
+  // Sync internal state with prop
+  useEffect(() => {
+    setSearchQuery(query)
+  }, [query])
 
   // Analyze user context and generate smart suggestions
   useEffect(() => {
@@ -209,13 +223,18 @@ export default function ContextAwareSearch({ onSearch, onTemplateUse, userContex
       return
     }
 
-    if (onTemplateUse) {
-      onTemplateUse({
-        template: selectedTemplate,
-        params: templateParams,
-        query: builtQuery.query,
-        estimatedCost: estimateQueryCost(selectedTemplate.id)
-      })
+    const templateData = {
+      template: selectedTemplate,
+      params: templateParams,
+      query: builtQuery.query,
+      estimatedCost: estimateQueryCost(selectedTemplate.id)
+    }
+
+    // Use the new onTemplateSearch prop if available, fall back to onTemplateUse
+    if (onTemplateSearch) {
+      onTemplateSearch(templateData)
+    } else if (onTemplateUse) {
+      onTemplateUse(templateData)
     }
   }
 
@@ -350,12 +369,22 @@ export default function ContextAwareSearch({ onSearch, onTemplateUse, userContex
             <Input
               placeholder="Enter your custom query..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value)
+                onQueryChange?.(e.target.value)
+              }}
               onKeyPress={(e) => e.key === 'Enter' && onSearch?.(searchQuery)}
               className="flex-1"
             />
-            <Button onClick={() => onSearch?.(searchQuery)} disabled={!searchQuery.trim()}>
-              <Search className="h-4 w-4" />
+            <Button 
+              onClick={() => onSearch?.(searchQuery)} 
+              disabled={!searchQuery.trim() || loading}
+            >
+              {loading ? (
+                <RefreshCw className="h-4 w-4 animate-spin" />
+              ) : (
+                <Search className="h-4 w-4" />
+              )}
             </Button>
           </div>
         </CardContent>
