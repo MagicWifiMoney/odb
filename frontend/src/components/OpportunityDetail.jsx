@@ -39,14 +39,37 @@ export default function OpportunityDetail() {
     try {
       setLoading(true)
       
-      console.log('Loading opportunity detail from Supabase for ID:', id)
+      console.log('Loading opportunity detail from Supabase for ID:', id, 'Type:', typeof id)
       
-      // Fetch opportunity details directly from Supabase
+      // Try both string and number ID formats
       const { data: opportunityData, error } = await supabase
         .from('opportunities')
         .select('*')
         .eq('id', id)
         .single()
+      
+      console.log('Supabase query result:', { data: opportunityData, error })
+      
+      // If not found with string ID, try converting to number
+      if (!opportunityData && !error) {
+        console.log('Trying with numeric ID...')
+        const numericId = parseInt(id, 10)
+        if (!isNaN(numericId)) {
+          const { data: numericData, error: numericError } = await supabase
+            .from('opportunities')
+            .select('*')
+            .eq('id', numericId)
+            .single()
+          
+          console.log('Numeric ID query result:', { data: numericData, error: numericError })
+          
+          if (numericData && !numericError) {
+            console.log('Found with numeric ID!')
+            setOpportunity(numericData)
+            return
+          }
+        }
+      }
       
       if (error) {
         console.error('Supabase error:', error)

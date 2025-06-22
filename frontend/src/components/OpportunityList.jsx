@@ -89,6 +89,16 @@ export default function OpportunityList() {
       console.log(`Opportunities loaded in ${endTime - startTime}ms`)
       
       setOpportunities(data || [])
+      
+      // Debug: Log first few opportunities to see ID format
+      if (data && data.length > 0) {
+        console.log('Sample opportunities from Supabase:', data.slice(0, 3).map(opp => ({
+          id: opp.id,
+          idType: typeof opp.id,
+          title: opp.title?.substring(0, 50)
+        })))
+      }
+      
       setPagination({
         ...pagination,
         total: count || 0,
