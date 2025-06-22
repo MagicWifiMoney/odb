@@ -21,6 +21,9 @@ const CostMonitoringDashboard = () => {
   const [costData, setCostData] = useState(null);
   const [performanceData, setPerformanceData] = useState(null);
   const [featureFlags, setFeatureFlags] = useState(null);
+  const [budgetData, setBudgetData] = useState(null);
+  const [costTrends, setCostTrends] = useState(null);
+  const [realTimeCosts, setRealTimeCosts] = useState(null);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
 
@@ -60,12 +63,56 @@ const CostMonitoringDashboard = () => {
     }
   };
 
+  const fetchBudgetData = async () => {
+    try {
+      const response = await fetch('/api/costs/budget');
+      if (response.ok) {
+        const data = await response.json();
+        setBudgetData(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch budget data:', error);
+      // Fallback budget data for demonstration
+      setBudgetData({
+        daily: { budget: 50, spent: 0, remaining: 50, percent_used: 0, alert_level: 'none' },
+        monthly: { budget: 1000, spent: 0, remaining: 1000, percent_used: 0, alert_level: 'none' }
+      });
+    }
+  };
+
+  const fetchCostTrends = async () => {
+    try {
+      const response = await fetch('/api/costs/trends?days=7');
+      if (response.ok) {
+        const data = await response.json();
+        setCostTrends(data.trends);
+      }
+    } catch (error) {
+      console.error('Failed to fetch cost trends:', error);
+    }
+  };
+
+  const fetchRealTimeCosts = async () => {
+    try {
+      const response = await fetch('/api/costs/summary?days=1');
+      if (response.ok) {
+        const data = await response.json();
+        setRealTimeCosts(data.usage);
+      }
+    } catch (error) {
+      console.error('Failed to fetch real-time costs:', error);
+    }
+  };
+
   const refreshData = async () => {
     setLoading(true);
     await Promise.all([
       fetchCostData(),
       fetchPerformanceData(),
-      fetchFeatureFlags()
+      fetchFeatureFlags(),
+      fetchBudgetData(),
+      fetchCostTrends(),
+      fetchRealTimeCosts()
     ]);
     setLastUpdated(new Date());
     setLoading(false);
@@ -133,6 +180,98 @@ const CostMonitoringDashboard = () => {
         </Button>
       </div>
 
+      {/* Live Budget Alerts */}
+      {budgetData && (budgetData.daily?.alert_level !== 'none' || budgetData.monthly?.alert_level !== 'none') && (
+        <Alert className={`mb-4 ${
+          budgetData.daily?.alert_level === 'critical' || budgetData.monthly?.alert_level === 'critical' 
+            ? 'border-red-500 bg-red-50' 
+            : 'border-yellow-500 bg-yellow-50'
+        }`}>
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            {budgetData.daily?.alert_level === 'critical' && 
+              `🚨 Critical: Daily budget ${budgetData.daily.percent_used.toFixed(1)}% used ($${budgetData.daily.spent}/$${budgetData.daily.budget})`
+            }
+            {budgetData.daily?.alert_level === 'warning' && 
+              `⚠️ Warning: Daily budget ${budgetData.daily.percent_used.toFixed(1)}% used ($${budgetData.daily.spent}/$${budgetData.daily.budget})`
+            }
+            {budgetData.monthly?.alert_level === 'critical' && 
+              ` | Monthly budget ${budgetData.monthly.percent_used.toFixed(1)}% used ($${budgetData.monthly.spent}/$${budgetData.monthly.budget})`
+            }
+            {budgetData.monthly?.alert_level === 'warning' && 
+              ` | Monthly budget ${budgetData.monthly.percent_used.toFixed(1)}% used ($${budgetData.monthly.spent}/$${budgetData.monthly.budget})`
+            }
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Live Budget Usage Bars */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <span>Daily Budget</span>
+              <Badge variant={budgetData?.daily?.alert_level === 'critical' ? 'destructive' : 
+                             budgetData?.daily?.alert_level === 'warning' ? 'secondary' : 'default'}>
+                {budgetData?.daily?.alert_level === 'critical' ? 'Critical' :
+                 budgetData?.daily?.alert_level === 'warning' ? 'Warning' : 'Normal'}
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="flex justify-between text-sm">
+                <span>Used: ${budgetData?.daily?.spent?.toFixed(2) || '0.00'}</span>
+                <span>Budget: ${budgetData?.daily?.budget?.toFixed(2) || '50.00'}</span>
+              </div>
+              <Progress 
+                value={budgetData?.daily?.percent_used || 0} 
+                className={`h-3 ${
+                  (budgetData?.daily?.percent_used || 0) >= 90 ? 'bg-red-100' :
+                  (budgetData?.daily?.percent_used || 0) >= 75 ? 'bg-yellow-100' : ''
+                }`}
+              />
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>{budgetData?.daily?.requests_today || 0} requests today</span>
+                <span>Saved: ${budgetData?.daily?.cache_savings?.toFixed(2) || '0.00'}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <span>Monthly Budget</span>
+              <Badge variant={budgetData?.monthly?.alert_level === 'critical' ? 'destructive' : 
+                             budgetData?.monthly?.alert_level === 'warning' ? 'secondary' : 'default'}>
+                {budgetData?.monthly?.alert_level === 'critical' ? 'Critical' :
+                 budgetData?.monthly?.alert_level === 'warning' ? 'Warning' : 'Normal'}
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="flex justify-between text-sm">
+                <span>Used: ${budgetData?.monthly?.spent?.toFixed(2) || '0.00'}</span>
+                <span>Budget: ${budgetData?.monthly?.budget?.toFixed(2) || '1000.00'}</span>
+              </div>
+              <Progress 
+                value={budgetData?.monthly?.percent_used || 0} 
+                className={`h-3 ${
+                  (budgetData?.monthly?.percent_used || 0) >= 90 ? 'bg-red-100' :
+                  (budgetData?.monthly?.percent_used || 0) >= 75 ? 'bg-yellow-100' : ''
+                }`}
+              />
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>{budgetData?.monthly?.requests_month || 0} requests this month</span>
+                <span>Saved: ${budgetData?.monthly?.cache_savings?.toFixed(2) || '0.00'}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Key Metrics Overview */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
@@ -152,46 +291,47 @@ const CostMonitoringDashboard = () => {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Cache Hit Rate</CardTitle>
+            <CardTitle className="text-sm font-medium">Cache Efficiency</CardTitle>
             <Zap className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {performanceData?.cache_stats?.hit_rate_percent || 0}%
+              {((realTimeCosts?.cache_hits || 0) + (realTimeCosts?.similar_matches || 0)) > 0 ? 
+                (((realTimeCosts?.cache_hits || 0) + (realTimeCosts?.similar_matches || 0)) / 
+                 Math.max(realTimeCosts?.total_requests || 1, 1) * 100).toFixed(1) : '0.0'}%
             </div>
             <p className="text-xs text-muted-foreground">
-              {performanceData?.cache_stats?.hits || 0} hits / {performanceData?.cache_stats?.total_requests || 0} total
+              {((realTimeCosts?.cache_hits || 0) + (realTimeCosts?.similar_matches || 0))} cached / {realTimeCosts?.total_requests || 0} total
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Cost Savings</CardTitle>
+            <CardTitle className="text-sm font-medium">Today's Spend</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              ${costData?.estimated_total_savings || 0}
+              ${realTimeCosts?.total_cost_usd?.toFixed(3) || '0.000'}
             </div>
             <p className="text-xs text-muted-foreground">
-              {costData?.api_calls_saved || 0} calls saved
+              {realTimeCosts?.total_requests || 0} total requests
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Optimization Status</CardTitle>
-            <StatusIcon className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Cache Savings</CardTitle>
+            <TrendingDown className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="flex items-center space-x-2">
-              <div className={`w-3 h-3 rounded-full ${optimizationStatus.color}`}></div>
-              <span className="text-sm font-medium">{optimizationStatus.status}</span>
+            <div className="text-2xl font-bold text-green-600">
+              ${realTimeCosts?.cache_savings_usd?.toFixed(3) || '0.000'}
             </div>
             <p className="text-xs text-muted-foreground">
-              {featureFlags?.enabled_count || 0}/{featureFlags?.total_count || 0} features enabled
+              {realTimeCosts?.api_calls || 0} actual API calls
             </p>
           </CardContent>
         </Card>
@@ -244,12 +384,150 @@ const CostMonitoringDashboard = () => {
       </Card>
 
       {/* Detailed Tabs */}
-      <Tabs defaultValue="performance" className="space-y-4">
+      <Tabs defaultValue="live-costs" className="space-y-4">
         <TabsList>
+          <TabsTrigger value="live-costs">Live Cost Tracker</TabsTrigger>
           <TabsTrigger value="performance">Performance</TabsTrigger>
           <TabsTrigger value="features">Feature Flags</TabsTrigger>
           <TabsTrigger value="technical">Technical Details</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="live-costs" className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Today's Usage Breakdown</CardTitle>
+                <CardDescription>Real-time cost and usage analysis</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex justify-between">
+                  <span>API Calls:</span>
+                  <span className="font-mono text-red-600">{realTimeCosts?.api_calls || 0}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Cache Hits:</span>
+                  <span className="font-mono text-green-600">{realTimeCosts?.cache_hits || 0}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Similar Matches:</span>
+                  <span className="font-mono text-blue-600">{realTimeCosts?.similar_matches || 0}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Total Cost:</span>
+                  <span className="font-mono font-bold">${realTimeCosts?.total_cost_usd?.toFixed(4) || '0.0000'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Cache Savings:</span>
+                  <span className="font-mono text-green-600">${realTimeCosts?.cache_savings_usd?.toFixed(4) || '0.0000'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Avg Response Time:</span>
+                  <span className="font-mono">{realTimeCosts?.average_response_time_ms?.toFixed(0) || 0}ms</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Cost Trend (7 Days)</CardTitle>
+                <CardDescription>Daily spending pattern</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {costTrends && costTrends.length > 0 ? (
+                  <div className="space-y-2">
+                    {costTrends.slice(-7).map((day, index) => (
+                      <div key={day.date} className="flex justify-between items-center">
+                        <span className="text-sm">{new Date(day.date).toLocaleDateString()}</span>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-sm font-mono">${day.total_cost.toFixed(3)}</span>
+                          <div className="w-20 bg-gray-200 rounded-full h-2">
+                            <div 
+                              className="bg-blue-500 h-2 rounded-full"
+                              style={{
+                                width: `${Math.min((day.total_cost / Math.max(...costTrends.map(d => d.total_cost))) * 100, 100)}%`
+                              }}
+                            ></div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground">No trend data available</p>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Most Expensive Query Today</CardTitle>
+                <CardDescription>Highest cost individual query</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {realTimeCosts?.most_expensive_query ? (
+                  <div className="space-y-2">
+                    <div className="text-sm font-mono bg-gray-100 p-2 rounded">
+                      {realTimeCosts.most_expensive_query.query}
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span>Cost:</span>
+                      <span className="font-bold">${realTimeCosts.most_expensive_query.cost.toFixed(4)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span>Endpoint:</span>
+                      <span className="font-mono">{realTimeCosts.most_expensive_query.endpoint}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span>Time:</span>
+                      <span>{new Date(realTimeCosts.most_expensive_query.timestamp).toLocaleTimeString()}</span>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground">No queries processed today</p>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Budget Projections</CardTitle>
+                <CardDescription>Estimated monthly spend based on current usage</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {budgetData && realTimeCosts ? (
+                  <>
+                    <div className="flex justify-between">
+                      <span>Current Daily Spend:</span>
+                      <span className="font-mono">${(budgetData.daily?.spent || 0).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Projected Monthly:</span>
+                      <span className="font-mono">
+                        ${((budgetData.daily?.spent || 0) * 30).toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Monthly Budget:</span>
+                      <span className="font-mono">${(budgetData.monthly?.budget || 1000).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Budget Status:</span>
+                      <Badge variant={
+                        ((budgetData.daily?.spent || 0) * 30) > (budgetData.monthly?.budget || 1000) * 0.9 ? 'destructive' :
+                        ((budgetData.daily?.spent || 0) * 30) > (budgetData.monthly?.budget || 1000) * 0.75 ? 'secondary' : 'default'
+                      }>
+                        {((budgetData.daily?.spent || 0) * 30) > (budgetData.monthly?.budget || 1000) * 0.9 ? 'Over Budget' :
+                         ((budgetData.daily?.spent || 0) * 30) > (budgetData.monthly?.budget || 1000) * 0.75 ? 'Warning' : 'On Track'}
+                      </Badge>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-muted-foreground">Loading budget data...</p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
 
         <TabsContent value="performance" className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

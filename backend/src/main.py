@@ -50,6 +50,13 @@ try:
 except Exception as e:
     print(f"❌ Trend analysis blueprint import failed: {e}")
     trend_bp = None
+
+try:
+    from src.routes.cost_routes import cost_bp
+    print("✅ Cost tracking blueprint imported")
+except Exception as e:
+    print(f"❌ Cost tracking blueprint import failed: {e}")
+    cost_bp = None
 # Analytics service
 from datetime import datetime, timedelta
 import random
@@ -234,7 +241,8 @@ blueprints = [
     (rfp_enhanced_bp, 'rfp_enhanced'),
     (perplexity_bp, 'perplexity'),
     (performance_bp, 'performance'),
-    (trend_bp, 'trend_analysis')
+    (trend_bp, 'trend_analysis'),
+    (cost_bp, 'cost_tracking')
 ]
 
 for blueprint, name in blueprints:
