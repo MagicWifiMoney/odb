@@ -31,15 +31,15 @@ def require_auth(request):
     """Placeholder auth function until auth module is implemented"""
     return {"user_id": "demo_user"}
 
+perplexity_bp = Blueprint('perplexity', __name__)
+logger = logging.getLogger(__name__)
+
 # Import cost tracking service
 try:
     from ..services.cost_tracking_service import cost_tracker
 except ImportError:
     cost_tracker = None
     logger.warning("Cost tracking service not available - costs will not be logged")
-
-perplexity_bp = Blueprint('perplexity', __name__)
-logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/perplexity", tags=["perplexity"])
 
