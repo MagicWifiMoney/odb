@@ -1,0 +1,122 @@
+# Perplexity Intelligence Hub - Enhanced RFP Analytics PRD
+
+## Project Context & Infrastructure Overview
+
+### Current Architecture
+**Frontend**: React 18+ with Vite, TypeScript, Tailwind CSS, shadcn/ui components
+**Backend**: Flask 2.3.3 with Python 3.11+, SQLAlchemy ORM
+**Database**: PostgreSQL via Supabase (primary) with SQLite fallback
+**Deployment**: Railway (backend) + Vercel (frontend) + Supabase (database)
+**Authentication**: Supabase Auth with user profiles and preferences
+**Analytics**: PostHog integration for user behavior tracking
+**AI Services**: Perplexity Sonar Pro API, OpenAI GPT-4 for analysis
+
+### Current Perplexity Implementation
+- **Frontend**: `PerplexityPage.jsx` with 5 tabs (AI Search, Market Analysis, Smart Alerts, Compliance, Settings)
+- **Backend**: `perplexity_live_discovery.py` with search endpoints
+- **Routes**: `/api/perplexity/*` endpoints in Flask blueprints
+- **Database**: Existing opportunity scoring and user preference tables
+- **Components**: SmartAlerts system with real-time notifications
+
+### Dependencies & Constraints
+- **Supabase Schema**: Must work with existing `opportunities`, `users`, `user_preferences` tables
+- **Flask Blueprints**: Must integrate with existing route structure in `backend/src/routes/`
+- **React Components**: Must use existing shadcn/ui component library
+- **API Rate Limits**: Perplexity Sonar Pro has usage limits - need efficient caching
+- **Deployment**: Railway auto-deploys from main branch, Vercel from frontend changes
+
+## Core Features Enhancement
+
+### 1. Trend & Anomaly Radar
+**What it does**: Visualizes emerging RFP trends and sudden anomalies (e.g., "Spike in AI-related RFPs in Midwest, 2x normal volume")
+**How**: Aggregate and analyze RFP metadata (industry, region, keywords) over rolling time windows. Use Sonar's real-time data to flag outliers
+**Output**: Weekly "Trend Pulse" reports and anomaly alerts for sudden market shifts
+**Integration**: New dashboard tab with D3.js/Chart.js visualizations, PostgreSQL time-series data storage
+
+### 2. Win Probability Predictor
+**What it does**: Estimate likelihood of winning based on historical Sonar data
+**How**: Analyze past RFPs with similar parameters (industry, budget, requirements) and historical bid outcomes
+**Output**: "Win Likelihood: 42% (based on 27 similar past RFPs)" with rationale and key differentiators
+**Integration**: ML model using scikit-learn, cached predictions in Supabase, React probability visualization
+
+### 3. Dynamic Compliance Matrix
+**What it does**: Instantly generate compliance checklist for each RFP
+**How**: Parse requirements via Sonar, auto-map to user capabilities, highlight gaps
+**Output**: Downloadable matrix showing "Compliant," "Partial," and "Gap" for each requirement
+**Integration**: PDF generation with jsPDF, requirement parsing with OpenAI, compliance scoring in database
+
+### 4. Fast-Fail Filter
+**What it does**: Instantly flag RFPs that fail must-have criteria (e.g., "must have SOC 2," "budget > $100k")
+**How**: Apply user-defined rules to Sonar's RFP feed; auto-hide or deprioritize poor-fit RFPs
+**Output**: "3 RFPs auto-filtered: Non-compliant with your baseline requirements"
+**Integration**: Rule engine in Python, user preference storage, filtered results in React components
+
+### 5. Amendment Volatility Index
+**What it does**: Score RFPs on amendment frequency and severity, not just cancellation risk
+**How**: Track amendment history via Sonar, weight by scope change and timing
+**Output**: "Volatility Score: 85/100. 4 amendments, 2 major scope changes in 5 days"
+**Integration**: Amendment tracking in PostgreSQL, volatility scoring algorithm, risk visualization
+
+### 6. Smart Keyword Expansion
+**What it does**: Suggest related keywords based on RFP trends to improve user alerts
+**How**: Use Sonar's search analytics to surface "rising" keywords in user's industry
+**Output**: "You track 'cybersecurity.' Consider adding: 'zero trust,' 'MFA,' 'endpoint detection'"
+**Integration**: Keyword analysis service, user preference updates, suggestion notifications
+
+## Technical Implementation Strategy
+
+### Database Extensions
+- **New Tables**: `trend_analysis`, `win_predictions`, `compliance_matrices`, `filter_rules`, `amendment_history`, `keyword_suggestions`
+- **Indexes**: Time-series indexes for trend data, full-text search for requirements
+- **Migrations**: Supabase migration scripts for schema updates
+
+### API Enhancements
+- **New Endpoints**: `/api/trends/*`, `/api/predictions/*`, `/api/compliance/*`, `/api/filters/*`
+- **Caching**: Redis-like caching for expensive Perplexity API calls
+- **Rate Limiting**: Implement backoff strategies for API limits
+
+### Frontend Components
+- **New Components**: TrendRadar, WinProbabilityCard, ComplianceMatrix, FilterManager, VolatilityIndicator, KeywordSuggestions
+- **Enhanced Tabs**: Upgrade existing PerplexityPage tabs with new functionality
+- **Real-time Updates**: WebSocket or polling for live trend updates
+
+### Testing Strategy
+- **Unit Tests**: Python pytest for backend logic, Jest for React components
+- **Integration Tests**: End-to-end API testing with real Perplexity data
+- **Performance Tests**: Load testing for trend analysis and prediction algorithms
+- **User Acceptance Tests**: Prototype testing with government contractor workflow
+
+### Deployment Considerations
+- **Environment Variables**: New API keys and configuration in Railway/Vercel
+- **Database Migrations**: Automated Supabase schema updates
+- **Feature Flags**: Gradual rollout of new intelligence features
+- **Monitoring**: Enhanced PostHog tracking for new feature usage
+
+## Success Metrics
+- **User Engagement**: 40% increase in Perplexity tab usage
+- **Decision Speed**: 60% reduction in RFP evaluation time
+- **Win Rate**: 25% improvement in bid success (where trackable)
+- **Alert Accuracy**: 90% relevance score for trend and anomaly alerts
+- **Performance**: <2 second load time for all intelligence dashboards
+
+## Risk Mitigation
+- **API Limits**: Implement intelligent caching and request batching
+- **Data Quality**: Validation layers for Perplexity data ingestion
+- **Performance**: Lazy loading and pagination for large datasets
+- **User Experience**: Graceful degradation when AI services are unavailable
+- **Compliance**: Ensure all data handling meets government contractor security requirements
+
+## Timeline Considerations
+- **Phase 1**: Core infrastructure and database setup (2 weeks)
+- **Phase 2**: Trend & Anomaly Radar + Win Probability Predictor (3 weeks)
+- **Phase 3**: Compliance Matrix + Fast-Fail Filter (2 weeks)
+- **Phase 4**: Amendment Volatility + Keyword Expansion (2 weeks)
+- **Phase 5**: Testing, optimization, and deployment (1 week)
+
+## Dependencies & Prerequisites
+- **Perplexity API Key**: Production-ready access with sufficient rate limits
+- **Enhanced Database Schema**: New tables and indexes in Supabase
+- **ML Libraries**: scikit-learn, pandas, numpy for prediction algorithms
+- **Visualization Libraries**: D3.js or Chart.js for trend visualization
+- **PDF Generation**: Libraries for compliance matrix export
+- **Caching Layer**: Redis or similar for API response caching 
