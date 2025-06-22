@@ -211,13 +211,22 @@ def get_opportunities_simple():
             'message': 'Failed to fetch opportunities'
         }), 500
 
+# Import performance blueprint
+try:
+    from .routes.performance_api import performance_bp
+    print("✅ Performance API blueprint imported successfully")
+except ImportError as e:
+    performance_bp = None
+    print(f"⚠️ Performance API blueprint import failed: {e}")
+
 # Register blueprints - only if they imported successfully
 blueprints = [
     (user_bp, 'user'),
     (opportunities_bp, 'opportunities'), 
     (scraping_bp, 'scraping'),
     (rfp_enhanced_bp, 'rfp_enhanced'),
-    (perplexity_bp, 'perplexity')
+    (perplexity_bp, 'perplexity'),
+    (performance_bp, 'performance')
 ]
 
 for blueprint, name in blueprints:

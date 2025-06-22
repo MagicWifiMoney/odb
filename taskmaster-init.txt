@@ -1,0 +1,8 @@
+Y
+Y
+Opportunity Dashboard
+An AI-powered opportunity tracking and government contract discovery platform
+Web Application
+eyaltoledano
+React
+TypeScript

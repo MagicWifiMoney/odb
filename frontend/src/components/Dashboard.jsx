@@ -29,6 +29,7 @@ import { Badge } from './ui/badge'
 import { formatCurrency } from '../lib/api'
 import { useToast } from '../hooks/use-toast'
 import { supabase } from '../lib/supabase'
+import IntelligenceDashboard from './IntelligenceDashboard'
 // Analytics temporarily disabled for build
 // import { analytics, trackDashboardLoad, trackDataSync } from '../lib/analytics'
 
@@ -337,6 +338,9 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Intelligence Hub */}
+      <IntelligenceDashboard />
 
       {/* Charts */}
       <div className="grid gap-6 md:grid-cols-2">
