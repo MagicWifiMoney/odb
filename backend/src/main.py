@@ -43,6 +43,13 @@ try:
 except Exception as e:
     print(f"❌ Perplexity blueprint import failed: {e}")
     perplexity_bp = None
+
+try:
+    from src.routes.trend_routes import trend_bp
+    print("✅ Trend analysis blueprint imported")
+except Exception as e:
+    print(f"❌ Trend analysis blueprint import failed: {e}")
+    trend_bp = None
 # Analytics service
 from datetime import datetime, timedelta
 import random
@@ -213,7 +220,7 @@ def get_opportunities_simple():
 
 # Import performance blueprint
 try:
-    from .routes.performance_api import performance_bp
+    from src.routes.performance_api import performance_bp
     print("✅ Performance API blueprint imported successfully")
 except ImportError as e:
     performance_bp = None
@@ -226,7 +233,8 @@ blueprints = [
     (scraping_bp, 'scraping'),
     (rfp_enhanced_bp, 'rfp_enhanced'),
     (perplexity_bp, 'perplexity'),
-    (performance_bp, 'performance')
+    (performance_bp, 'performance'),
+    (trend_bp, 'trend_analysis')
 ]
 
 for blueprint, name in blueprints:
