@@ -4,7 +4,9 @@
   "framework": "vite",
   "installCommand": "npm install --legacy-peer-deps",
   "env": {
-    "VITE_API_BASE_URL": "https://api.yourdomain.com/api"
+    "VITE_API_BASE_URL": "https://web-production-XXXX.up.railway.app/api",
+    "VITE_SUPABASE_URL": "https://zkdrpchjejelgsuuffli.supabase.co",
+    "VITE_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InprZHJwY2hqZWplbGdzdXVmZmxpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAyMjY4MTMsImV4cCI6MjA2NTgwMjgxM30.xBBArkhXeFT26BmVI-WNag0qa0hHGdFUmxmlcTi4CGg"
   },
   "rewrites": [
     {
