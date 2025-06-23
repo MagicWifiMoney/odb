@@ -1,5 +1,8 @@
 # Ignore frontend files for backend-only Railway deployment
 frontend/
+package.json
+package-lock.json
+node_modules/
 *.md
 .git/
 .github/
