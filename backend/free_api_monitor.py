@@ -17,6 +17,8 @@ load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 
 sys.path.insert(0, os.path.dirname(__file__))
 
+from budget_aware_perplexity import BudgetAwarePerplexity
+
 class FreeAPIMonitor:
     """Monitoring system using only free government APIs"""
     
@@ -27,6 +29,17 @@ class FreeAPIMonitor:
         # Initialize Flask app context
         self.app = None
         self._init_flask_app()
+        
+        # Initialize budget-aware Perplexity (optional)
+        self.ai_intelligence = None
+        try:
+            if os.getenv('PERPLEXITY_API_KEY'):
+                self.ai_intelligence = BudgetAwarePerplexity()
+                print("✅ AI Intelligence layer enabled")
+            else:
+                print("⚠️ AI Intelligence disabled - no Perplexity API key")
+        except Exception as e:
+            print(f"⚠️ AI Intelligence initialization failed: {e}")
         
         # Rate limit settings for free APIs
         self.rate_limits = {
@@ -47,10 +60,20 @@ class FreeAPIMonitor:
             }
         }
         
-        print("🆓 Free API Monitor initialized")
+        print("🆓 Free API Monitor with AI Intelligence initialized")
         print("📊 Rate limits configured:")
         for api, limits in self.rate_limits.items():
             print(f"   {api}: {limits['requests_per_hour']}/hour, {limits['requests_per_minute']}/min")
+        
+        # Show AI budget status if available
+        if self.ai_intelligence:
+            try:
+                budget_status = self.ai_intelligence.get_budget_status()
+                budget_used = budget_status['budget']['percentage_used']
+                daily_queries = budget_status['daily']['queries_used']
+                print(f"💰 AI Intelligence Budget: {budget_used:.1f}% used, {daily_queries} queries today")
+            except Exception as e:
+                print(f"⚠️ Could not get AI budget status: {e}")
     
     def _init_flask_app(self):
         """Initialize Flask app for database context"""
@@ -192,9 +215,9 @@ class FreeAPIMonitor:
             self.sync_usa_spending()
     
     def run_daily_sync(self):
-        """Run daily - comprehensive sync from all free APIs"""
-        print(f"\n📅 Daily Free API Sync - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        print("=" * 50)
+        """Run daily - comprehensive sync from all free APIs + AI intelligence"""
+        print(f"\n📅 Daily Free API Sync with AI Intelligence - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        print("=" * 70)
         
         results = {}
         
@@ -215,6 +238,26 @@ class FreeAPIMonitor:
         print("   💵 USASpending.gov...")
         results['usa_spending'] = self.sync_usa_spending()
         
+        # AI Intelligence Layer (if available and budget allows)
+        if self.ai_intelligence:
+            print("\n🤖 Running AI Intelligence Brief...")
+            try:
+                ai_results = self.ai_intelligence.run_daily_intelligence_brief()
+                results['ai_intelligence'] = ai_results
+                
+                # Show AI insights summary
+                if ai_results.get('queries_executed', 0) > 0:
+                    cost = ai_results.get('total_cost', 0)
+                    print(f"   ✅ AI Brief Complete: {ai_results['queries_executed']} queries, ${cost:.3f}")
+                else:
+                    print(f"   ⚠️ AI Brief Skipped: Budget or API constraints")
+                    
+            except Exception as e:
+                print(f"   ❌ AI Intelligence failed: {e}")
+                results['ai_intelligence'] = {'status': 'error', 'error': str(e)}
+        else:
+            print("   ⚠️ AI Intelligence not available")
+        
         # Log results
         try:
             from src.config.supabase import get_supabase_admin_client
@@ -222,7 +265,7 @@ class FreeAPIMonitor:
             
             log_data = {
                 'source_name': 'FreeAPIMonitor',
-                'sync_type': 'daily_comprehensive',
+                'sync_type': 'daily_comprehensive_with_ai',
                 'records_processed': sum(r.get('processed', 0) for r in results.values() if isinstance(r, dict)),
                 'records_added': sum(r.get('added', 0) for r in results.values() if isinstance(r, dict)),
                 'started_at': datetime.now().isoformat(),
@@ -235,12 +278,12 @@ class FreeAPIMonitor:
         except Exception as e:
             print(f"⚠️ Failed to log daily sync: {e}")
         
-        print("\n✅ Daily comprehensive sync complete!")
+        print("\n✅ Daily comprehensive sync with AI intelligence complete!")
     
     def run_weekly_analysis(self):
-        """Run weekly - just analyze existing data (no API calls)"""
-        print(f"\n📊 Weekly Analysis - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        print("=" * 50)
+        """Run weekly - database analysis + AI deep dive"""
+        print(f"\n📊 Weekly Analysis with AI Deep Dive - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        print("=" * 70)
         
         try:
             from src.config.supabase import get_supabase_admin_client
@@ -260,10 +303,30 @@ class FreeAPIMonitor:
             print(f"   Total Opportunities: {total_count.count}")
             print(f"   Added This Week: {recent_count.count}")
             
+            # AI Deep Dive (if available and budget allows)
+            ai_results = {}
+            if self.ai_intelligence:
+                print(f"\n🔍 Running AI Weekly Deep Dive...")
+                try:
+                    ai_results = self.ai_intelligence.run_weekly_deep_dive()
+                    
+                    if ai_results.get('queries_executed', 0) > 0:
+                        cost = ai_results.get('total_cost', 0)
+                        agency = ai_results.get('focus_agency', 'Unknown')
+                        print(f"   ✅ AI Deep Dive Complete: {agency} focus, ${cost:.3f}")
+                    else:
+                        print(f"   ⚠️ AI Deep Dive Skipped: Budget constraints")
+                        
+                except Exception as e:
+                    print(f"   ❌ AI Deep Dive failed: {e}")
+                    ai_results = {'status': 'error', 'error': str(e)}
+            else:
+                print(f"   ⚠️ AI Deep Dive not available")
+            
             # Log weekly analysis
             log_data = {
                 'source_name': 'FreeAPIMonitor',
-                'sync_type': 'weekly_analysis',
+                'sync_type': 'weekly_analysis_with_ai',
                 'records_processed': total_count.count,
                 'records_added': recent_count.count,
                 'started_at': datetime.now().isoformat(),
@@ -271,17 +334,17 @@ class FreeAPIMonitor:
             }
             
             supabase.table('sync_logs').insert(log_data).execute()
-            print("✅ Weekly analysis complete and logged")
+            print("✅ Weekly analysis with AI deep dive complete and logged")
             
         except Exception as e:
             print(f"❌ Weekly analysis failed: {e}")
 
 def main():
-    """Start the free API monitoring system"""
-    print("🆓 Starting Free API Monitoring System")
-    print("=" * 60)
+    """Start the free API monitoring system with AI intelligence"""
+    print("🆓 Starting Free API Monitoring System with AI Intelligence")
+    print("=" * 70)
     print(f"⏰ Started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print("💰 Using only FREE government APIs")
+    print("💰 Using FREE government APIs + Budget-Controlled AI ($10/month)")
     print("🚦 Rate limits configured to stay within free tiers")
     
     try:
@@ -293,11 +356,11 @@ def main():
         schedule.every().day.at("09:00").do(monitor.run_daily_sync)
         schedule.every().monday.at("08:00").do(monitor.run_weekly_analysis)
         
-        print("\n✅ Free API monitoring schedule configured:")
+        print("\n✅ Free API + AI monitoring schedule configured:")
         print("   ⏰ Every hour: Single API rotation")
-        print("   📅 Daily 9AM: All free APIs (with delays)")
-        print("   📊 Weekly Monday 8AM: Data analysis only")
-        print("\n🔄 Free API monitoring is now running...")
+        print("   📅 Daily 9AM: All free APIs + AI intelligence brief")
+        print("   📊 Weekly Monday 8AM: Data analysis + AI deep dive")
+        print("\n🔄 Free API + AI monitoring is now running...")
         print("   Press Ctrl+C to stop")
         
         # Run initial light sync

@@ -64,10 +64,13 @@ def check_monitoring_status():
 def show_commands():
     """Show available commands"""
     print("\n🔧 Available Commands:")
-    print("   Start monitoring:  python3 free_api_monitor.py &")
-    print("   Check status:      python3 check_monitoring.py")
-    print("   Stop monitoring:   pkill -f free_api_monitor.py")
-    print("   Manual sync:       python3 simple_sync.py")
+    print("   Start monitoring:      python3 free_api_monitor.py &")
+    print("   Check status:          python3 check_monitoring.py")
+    print("   Stop monitoring:       pkill -f free_api_monitor.py")
+    print("   Manual sync:           python3 simple_sync.py")
+    print("   AI budget status:      python3 ai_emergency_intel.py status")
+    print("   Emergency AI query:    python3 ai_emergency_intel.py 'query focus'")
+    print("   Test budget tracker:   python3 perplexity_budget_tracker.py")
 
 if __name__ == "__main__":
     check_monitoring_status()
