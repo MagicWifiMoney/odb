@@ -23,8 +23,11 @@ COPY backend/ ./backend/
 ENV PYTHONPATH=/app/backend
 ENV FLASK_ENV=production
 
+# Change working directory to backend
+WORKDIR /app/backend
+
 # Expose port
 EXPOSE $PORT
 
 # Start command
-CMD cd backend && python3 -m flask --app src.main run --host=0.0.0.0 --port=$PORT
+CMD python3 -m flask --app src.main run --host=0.0.0.0 --port=$PORT
