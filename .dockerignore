@@ -1,0 +1,33 @@
+# Frontend files (not needed for backend deployment)
+frontend/node_modules/
+frontend/dist/
+frontend/.next/
+frontend/.nuxt/
+
+# Development files
+.git/
+.github/
+*.log
+*.md
+.env.local
+.DS_Store
+
+# Test files
+test_*.py
+*_test.py
+tests/
+
+# Cache directories
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Local development
+.local/
+tmp/

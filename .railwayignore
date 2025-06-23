@@ -1,0 +1,11 @@
+# Ignore frontend files for backend-only Railway deployment
+frontend/
+*.md
+.git/
+.github/
+.vscode/
+.idea/
+*.log
+.DS_Store
+test_*.py
+*_test.py
