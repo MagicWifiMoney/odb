@@ -11,7 +11,8 @@ import json
 from datetime import datetime, timedelta
 from typing import List, Dict, Any
 from dotenv import load_dotenv
-load_dotenv()
+# Load environment from backend directory
+load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 
 sys.path.insert(0, os.path.dirname(__file__))
 from src.config.supabase import get_supabase_admin_client

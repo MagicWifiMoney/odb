@@ -396,24 +396,24 @@ class EnhancedPerplexityClient:
             
             processing_time = time.time() - start_time
             
-                         # Extract content and create structured response
-             content = response.choices[0].message.content
-             
-             usage = response.usage or type('usage', (), {'prompt_tokens': 0, 'completion_tokens': 0, 'total_tokens': 0})()
-             
-             result = {
-                 'content': content,
-                 'model': model,
-                 'timestamp': datetime.now().isoformat(),
-                 'processing_time': processing_time,
-                 'usage': {
-                     'prompt_tokens': usage.prompt_tokens,
-                     'completion_tokens': usage.completion_tokens,
-                     'total_tokens': usage.total_tokens
-                 },
-                 'original_query': query,
-                 'cost_estimate': self._estimate_cost(usage.total_tokens)
-             }
+            # Extract content and create structured response
+            content = response.choices[0].message.content
+            
+            usage = response.usage or type('usage', (), {'prompt_tokens': 0, 'completion_tokens': 0, 'total_tokens': 0})()
+            
+            result = {
+                'content': content,
+                'model': model,
+                'timestamp': datetime.now().isoformat(),
+                'processing_time': processing_time,
+                'usage': {
+                    'prompt_tokens': usage.prompt_tokens,
+                    'completion_tokens': usage.completion_tokens,
+                    'total_tokens': usage.total_tokens
+                },
+                'original_query': query,
+                'cost_estimate': self._estimate_cost(usage.total_tokens)
+            }
             
             self.stats['api_calls'] += 1
             self.stats['total_requests'] += 1

@@ -10,7 +10,7 @@ import time
 import schedule
 from datetime import datetime
 from dotenv import load_dotenv
-load_dotenv()
+load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 
 sys.path.insert(0, os.path.dirname(__file__))
 from firecrawl_scraper import FirecrawlScraper
@@ -284,7 +284,7 @@ class AutomatedContractMonitor:
             recent_logs = self.supabase.table('sync_logs')\
                 .select('*')\
                 .eq('source_name', 'AutomatedMonitor')\
-                .order('synced_at', desc=True)\
+                .order('completed_at', desc=True)\
                 .limit(10)\
                 .execute()
             

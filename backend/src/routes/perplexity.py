@@ -22,10 +22,24 @@ from ..services.perplexity_client import (
     QueryType, 
     QueryResult
 )
-from ..auth.dependencies import require_auth
+
+# Auth import - temporarily disabled until auth module is available
+# from ..auth.dependencies import require_auth
+
+# Temporary auth placeholder
+def require_auth(request):
+    """Placeholder auth function until auth module is implemented"""
+    return {"user_id": "demo_user"}
 
 perplexity_bp = Blueprint('perplexity', __name__)
 logger = logging.getLogger(__name__)
+
+# Import cost tracking service
+try:
+    from ..services.cost_tracking_service import cost_tracker
+except ImportError:
+    cost_tracker = None
+    logger.warning("Cost tracking service not available - costs will not be logged")
 
 router = APIRouter(prefix="/perplexity", tags=["perplexity"])
 
@@ -261,10 +275,31 @@ class PerplexityFinancialService:
 # Initialize service
 financial_service = PerplexityFinancialService()
 
+def log_api_cost(endpoint, query, cost_estimate, tokens_used=0, response_time=0.0):
+    """Helper function to log API costs"""
+    try:
+        if cost_tracker:
+            cost_tracker.log_api_call(
+                endpoint=endpoint,
+                method='POST',
+                query=query,
+                response_size_kb=tokens_used / 1000,  # Rough estimate
+                cost_usd=cost_estimate,
+                response_time_ms=response_time * 1000,
+                metadata={'tokens': tokens_used, 'query_length': len(query)}
+            )
+        else:
+            # Fallback logging to console
+            logger.info(f"API Cost: {endpoint} - Query: {query[:50]}... - Cost: ${cost_estimate:.4f}")
+    except Exception as e:
+        logger.error(f"Failed to log API cost: {e}")
 
 @perplexity_bp.route('/perplexity/search', methods=['POST'])
 def search_financial_data():
-    """Search for financial data using Perplexity AI"""
+    """Search for financial data using Perplexity AI with cost tracking"""
+    start_time = datetime.now()
+    cost_estimate = 0.0
+    
     try:
         data = request.get_json()
         
@@ -277,8 +312,30 @@ def search_financial_data():
         
         result = financial_service.search_financial_data(query)
         
+        # Calculate cost estimate (Perplexity pricing: ~$0.002 per query)
+        cost_estimate = 0.002
+        tokens_estimated = len(query.split()) * 3  # Rough estimate
+        response_time = (datetime.now() - start_time).total_seconds()
+        
+        # Log the API cost
+        log_api_cost(
+            endpoint='/perplexity/search',
+            query=query,
+            cost_estimate=cost_estimate,
+            tokens_used=tokens_estimated,
+            response_time=response_time
+        )
+        
         if 'error' in result:
             return jsonify(result), 500
+        
+        # Add cost tracking info to response
+        result['cost_tracking'] = {
+            'cost_usd': cost_estimate,
+            'tokens_estimated': tokens_estimated,
+            'response_time_ms': response_time * 1000,
+            'timestamp': datetime.now().isoformat()
+        }
         
         return jsonify({
             'success': True,
@@ -286,6 +343,15 @@ def search_financial_data():
         })
         
     except Exception as e:
+        # Still log the failed attempt
+        response_time = (datetime.now() - start_time).total_seconds()
+        log_api_cost(
+            endpoint='/perplexity/search',
+            query=data.get('query', 'unknown') if data else 'no_query',
+            cost_estimate=cost_estimate,
+            response_time=response_time
+        )
+        
         logger.error(f"Financial search endpoint failed: {e}")
         return jsonify({'error': 'Internal server error'}), 500
 

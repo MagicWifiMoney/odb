@@ -1,5 +1,10 @@
 import os
 import sys
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
 # DON'T CHANGE THIS !!!
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
@@ -43,6 +48,47 @@ try:
 except Exception as e:
     print(f"❌ Perplexity blueprint import failed: {e}")
     perplexity_bp = None
+
+try:
+    from src.routes.trend_routes import trend_bp
+    print("✅ Trend analysis blueprint imported")
+except Exception as e:
+    print(f"❌ Trend analysis blueprint import failed: {e}")
+    trend_bp = None
+
+try:
+    from src.routes.cost_routes import cost_bp
+    print("✅ Cost tracking blueprint imported")
+except Exception as e:
+    print(f"❌ Cost tracking blueprint import failed: {e}")
+    cost_bp = None
+
+# Intelligence APIs temporarily disabled for clean production deployment
+# try:
+#     from src.routes.fast_fail_api import fast_fail_bp
+#     print("✅ Fast-Fail API blueprint imported")
+# except Exception as e:
+#     print(f"❌ Fast-Fail API blueprint import failed: {e}")
+#     fast_fail_bp = None
+
+# try:
+#     from src.routes.win_probability_api import win_probability_bp
+#     print("✅ Win Probability API blueprint imported")
+# except Exception as e:
+#     print(f"❌ Win Probability API blueprint import failed: {e}")
+#     win_probability_bp = None
+
+# try:
+#     from src.routes.compliance_api import compliance_bp
+#     print("✅ Compliance API blueprint imported")
+# except Exception as e:
+#     print(f"❌ Compliance API blueprint import failed: {e}")
+#     compliance_bp = None
+
+# Set to None for clean deployment
+fast_fail_bp = None
+win_probability_bp = None
+compliance_bp = None
 # Analytics service
 from datetime import datetime, timedelta
 import random
@@ -211,13 +257,28 @@ def get_opportunities_simple():
             'message': 'Failed to fetch opportunities'
         }), 500
 
+# Import performance blueprint
+try:
+    from src.routes.performance_api import performance_bp
+    print("✅ Performance API blueprint imported successfully")
+except ImportError as e:
+    performance_bp = None
+    print(f"⚠️ Performance API blueprint import failed: {e}")
+
 # Register blueprints - only if they imported successfully
 blueprints = [
     (user_bp, 'user'),
     (opportunities_bp, 'opportunities'), 
     (scraping_bp, 'scraping'),
     (rfp_enhanced_bp, 'rfp_enhanced'),
-    (perplexity_bp, 'perplexity')
+    (perplexity_bp, 'perplexity'),
+    (performance_bp, 'performance'),
+    (trend_bp, 'trend_analysis'),
+    (cost_bp, 'cost_tracking')
+    # Intelligence blueprints temporarily disabled for clean production deployment
+    # (fast_fail_bp, 'fast_fail'),
+    # (win_probability_bp, 'win_probability'),
+    # (compliance_bp, 'compliance')
 ]
 
 for blueprint, name in blueprints:
@@ -629,4 +690,4 @@ def get_opportunities_working():
         return jsonify({'error': f'Failed to fetch opportunities: {str(e)}'}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5001, debug=True)
+    app.run(host='0.0.0.0', port=5002, debug=False)
