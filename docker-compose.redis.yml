@@ -1,0 +1,48 @@
+# Redis Docker Compose for Perplexity Intelligence Hub
+# Provides caching layer for API calls and session data
+
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7.2-alpine
+    container_name: odb-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+      - ./redis.conf:/usr/local/etc/redis/redis.conf
+    command: redis-server /usr/local/etc/redis/redis.conf
+    environment:
+      - REDIS_REPLICATION_MODE=master
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - odb_network
+
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: odb-redis-ui
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+      - HTTP_USER=admin
+      - HTTP_PASSWORD=admin123
+    depends_on:
+      - redis
+    networks:
+      - odb_network
+
+volumes:
+  redis_data:
+    driver: local
+
+networks:
+  odb_network:
+    driver: bridge

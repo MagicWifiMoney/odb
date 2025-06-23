@@ -11,6 +11,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { apiClient } from '@/lib/api'
 import { useToast } from '@/hooks/use-toast'
 import SmartAlerts from '@/components/SmartAlerts'
+import ContextAwareSearch from '@/components/ContextAwareSearch'
 
 export default function PerplexityPage() {
   const [searchQuery, setSearchQuery] = useState('')
@@ -21,19 +22,34 @@ export default function PerplexityPage() {
   const [financialInsights, setFinancialInsights] = useState([])
   const [loading, setLoading] = useState(false)
   const [activeTab, setActiveTab] = useState('search')
+  const [searchHistory, setSearchHistory] = useState([])
+  const [userContext, setUserContext] = useState({
+    industry: 'Government Technology',
+    company: 'Federal Contractor',
+    focus_areas: ['AI/ML', 'Cybersecurity', 'Cloud Services']
+  })
   const { toast } = useToast()
 
   // Auto-load market analysis on component mount
   useEffect(() => {
     loadMarketAnalysis()
     loadTrendAnalysis()
+    // Load search history from localStorage
+    const savedHistory = localStorage.getItem('perplexity_search_history')
+    if (savedHistory) {
+      try {
+        setSearchHistory(JSON.parse(savedHistory))
+      } catch (error) {
+        console.error('Failed to load search history:', error)
+      }
+    }
   }, [])
 
-  const handleFinancialSearch = async () => {
-    if (!searchQuery.trim()) {
+  const handleContextAwareSearch = async (query) => {
+    if (!query?.trim()) {
       toast({
         title: "Search Required",
-        description: "Please enter a financial query",
+        description: "Please enter a query",
         variant: "destructive",
       })
       return
@@ -41,14 +57,24 @@ export default function PerplexityPage() {
 
     try {
       setLoading(true)
+      setSearchQuery(query)
       
-      const response = await apiClient.searchFinancialData(searchQuery)
+      // Add to search history
+      const newSearch = {
+        query,
+        timestamp: Date.now(),
+        category: 'Financial Intelligence'
+      }
+      const updatedHistory = [newSearch, ...searchHistory.slice(0, 49)]
+      setSearchHistory(updatedHistory)
+      localStorage.setItem('perplexity_search_history', JSON.stringify(updatedHistory))
+      
+      const response = await apiClient.searchFinancialData(query)
       
       if (response.success && response.data) {
-        // Transform the API response to match our UI format
         const searchResult = {
           id: Date.now(),
-          title: `Financial Analysis: ${searchQuery}`,
+          title: `Financial Analysis: ${query}`,
           description: response.data.analysis,
           source_url: '',
           relevance_score: 95,
@@ -62,8 +88,7 @@ export default function PerplexityPage() {
           description: "Financial analysis generated successfully",
         })
       } else {
-        // Fall back to simulation if API fails
-        const response = await simulatePerplexitySearch(searchQuery)
+        const response = await simulatePerplexitySearch(query)
         setResults(response.results || [])
         
         toast({
@@ -74,9 +99,8 @@ export default function PerplexityPage() {
     } catch (error) {
       console.error('Financial search failed:', error)
       
-      // Fall back to simulation on error
       try {
-        const response = await simulatePerplexitySearch(searchQuery)
+        const response = await simulatePerplexitySearch(query)
         setResults(response.results || [])
         
         toast({
@@ -94,6 +118,18 @@ export default function PerplexityPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleTemplateSearch = async (templateData) => {
+    const { query, template, params } = templateData
+    
+    toast({
+      title: "Template Query Executed",
+      description: `Using ${template.name} template`,
+    })
+    
+    // Execute the search with the template-generated query
+    await handleContextAwareSearch(query)
   }
 
   const loadMarketAnalysis = async () => {
@@ -525,20 +561,13 @@ export default function PerplexityPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="flex space-x-2">
-                  <div className="flex-1">
-                    <Input
-                      placeholder="e.g., 'Latest government technology spending trends' or 'Federal contract market analysis'"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && handleFinancialSearch()}
-                    />
-                  </div>
-                  <Button onClick={handleFinancialSearch} disabled={loading}>
-                    <Search className="w-4 h-4 mr-2" />
-                    {loading ? 'Searching...' : 'Search'}
-                  </Button>
-                </div>
+                <ContextAwareSearch
+                  query={searchQuery}
+                  onQueryChange={(query) => setSearchQuery(query)}
+                  onSearch={handleContextAwareSearch}
+                  onTemplateSearch={handleTemplateSearch}
+                  loading={loading}
+                />
 
                 {/* Search Results */}
                 {results.length > 0 && (

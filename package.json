@@ -1,0 +1,13 @@
+{
+	"scripts": {
+		"taskmaster": "task-master list",
+		"tm": "task-master list",
+		"next": "task-master next",
+		"show": "task-master show",
+		"expand": "task-master expand",
+		"done": "task-master set-status --status=done --id"
+	},
+	"dependencies": {
+		"task-master-ai": "^0.18.0"
+	}
+}

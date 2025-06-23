@@ -29,6 +29,9 @@ import { Badge } from './ui/badge'
 import { formatCurrency } from '../lib/api'
 import { useToast } from '../hooks/use-toast'
 import { supabase } from '../lib/supabase'
+import IntelligenceDashboard from './IntelligenceDashboard'
+// Analytics temporarily disabled for build
+// import { analytics, trackDashboardLoad, trackDataSync } from '../lib/analytics'
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8']
 
@@ -49,6 +52,8 @@ export default function Dashboard() {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadDashboardData = async () => {
+    const startTime = performance.now()
+    
     try {
       setLoading(true)
       
@@ -129,8 +134,17 @@ export default function Dashboard() {
       
       console.log('All Supabase queries completed successfully!')
       console.log('Opportunities count:', opportunities?.length)
+      
+      // Track dashboard load analytics (temporarily disabled)
+      const loadTime = performance.now() - startTime
+      // trackDashboardLoad(loadTime, totalCount || 0)
+      
     } catch (error) {
       console.error('Failed to load dashboard data:', error)
+      
+      // Track error (temporarily disabled)
+      // analytics.trackError(error, { context: 'dashboard_load' })
+      
       toast({
         title: "Error",
         description: `Failed to load dashboard data: ${error.message}`,
@@ -149,8 +163,14 @@ export default function Dashboard() {
         description: "Refreshing dashboard data...",
       })
       
+      // Track sync start (temporarily disabled)
+      // trackDataSync('manual', 'started')
+      
       // Since we're using Supabase directly, just reload the data
       await loadDashboardData()
+      
+      // Track sync success (temporarily disabled)
+      // trackDataSync('manual', 'completed')
       
       toast({
         title: "Refresh Complete",
@@ -158,6 +178,11 @@ export default function Dashboard() {
       })
     } catch (error) {
       console.error('Refresh failed:', error)
+      
+      // Track sync failure (temporarily disabled)
+      // trackDataSync('manual', 'failed')
+      // analytics.trackError(error, { context: 'manual_sync' })
+      
       toast({
         title: "Refresh Failed",
         description: error.message || "Failed to refresh dashboard data",
@@ -313,6 +338,9 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Intelligence Hub */}
+      <IntelligenceDashboard />
 
       {/* Charts */}
       <div className="grid gap-6 md:grid-cols-2">

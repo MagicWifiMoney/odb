@@ -1,5 +1,6 @@
-// API configuration
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://web-production-ba1c.up.railway.app/api'
+// API Configuration with production domain support
+const API_BASE_URL = import.meta.env.VITE_API_URL || 
+                     (import.meta.env.PROD ? 'https://api.rfptracking.com' : 'http://localhost:5001')
 
 // Log API configuration on startup
 console.log('Using API URL:', API_BASE_URL)
@@ -70,17 +71,17 @@ class ApiClient {
   // Opportunities endpoints
   async getOpportunities(params = {}) {
     const queryString = new URLSearchParams(params).toString()
-    return this.request(`/opportunities-working${queryString ? `?${queryString}` : ''}`)
+    return this.request(`/api/opportunities-working${queryString ? `?${queryString}` : ''}`)
   }
 
   // Optimized endpoint for dashboard - loads minimal data
   async getDashboardOpportunities(params = { per_page: 20 }) {
     const queryString = new URLSearchParams(params).toString()
-    return this.request(`/opportunities-working${queryString ? `?${queryString}` : ''}`)
+    return this.request(`/api/opportunities-working${queryString ? `?${queryString}` : ''}`)
   }
 
   async getOpportunity(id) {
-    return this.request(`/opportunities/${id}`)
+    return this.request(`/api/opportunities/${id}`)
   }
 
   async searchOpportunities(searchData) {
@@ -96,7 +97,7 @@ class ApiClient {
 
   async getScoreExplanation(id, keywords = []) {
     const queryString = keywords.length > 0 ? `?keywords=${keywords.join(',')}` : ''
-    return this.request(`/opportunities/${id}/score-explanation${queryString}`)
+    return this.request(`/api/opportunities/${id}/score-explanation${queryString}`)
   }
 
   // Sync endpoints

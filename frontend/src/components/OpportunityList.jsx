@@ -9,7 +9,12 @@ import {
   Calendar,
   DollarSign,
   Building,
-  Target
+  Target,
+  Shield,
+  AlertTriangle,
+  CheckCircle,
+  XCircle,
+  RefreshCw
 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
 import { Button } from './ui/button'
@@ -19,6 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { formatCurrency, formatDate, formatRelativeDate, getScoreColor, getScoreBadgeColor, getUrgencyColor, getSourceTypeLabel, getSourceTypeColor } from '../lib/api'
 import { useToast } from '../hooks/use-toast'
 import { supabase } from '../lib/supabase'
+import { fastFailAPI } from '../services/api'
 
 export default function OpportunityList() {
   const [opportunities, setOpportunities] = useState([])
@@ -28,6 +34,9 @@ export default function OpportunityList() {
   const [sortOrder, setSortOrder] = useState('desc')
   const [statusFilter, setStatusFilter] = useState('all')
   const [sourceFilter, setSourceFilter] = useState('all')
+  const [fastFailFilter, setFastFailFilter] = useState('all') // New: Fast-Fail filter
+  const [fastFailData, setFastFailData] = useState({}) // Store Fast-Fail assessments
+  const [loadingFastFail, setLoadingFastFail] = useState(false)
   const [pagination, setPagination] = useState({
     page: 1,
     per_page: 50, // Increased for better performance with large datasets
@@ -43,7 +52,7 @@ export default function OpportunityList() {
     }, searchTerm ? 300 : 0) // 300ms delay for search, immediate for other filters
     
     return () => clearTimeout(timeoutId)
-  }, [searchTerm, sortBy, sortOrder, statusFilter, sourceFilter, pagination.page]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [searchTerm, sortBy, sortOrder, statusFilter, sourceFilter, fastFailFilter, pagination.page]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadOpportunities = async () => {
     try {
@@ -89,11 +98,26 @@ export default function OpportunityList() {
       console.log(`Opportunities loaded in ${endTime - startTime}ms`)
       
       setOpportunities(data || [])
+      
+      // Debug: Log first few opportunities to see ID format
+      if (data && data.length > 0) {
+        console.log('Sample opportunities from Supabase:', data.slice(0, 3).map(opp => ({
+          id: opp.id,
+          idType: typeof opp.id,
+          title: opp.title?.substring(0, 50)
+        })))
+      }
+      
       setPagination({
         ...pagination,
         total: count || 0,
         pages: Math.ceil((count || 0) / pagination.per_page)
       })
+      
+      // Load Fast-Fail assessments for visible opportunities
+      if (data && data.length > 0) {
+        loadFastFailAssessments(data.slice(0, 10)) // Only assess first 10 for performance
+      }
     } catch (error) {
       console.error('Failed to load opportunities:', error)
       toast({
@@ -110,6 +134,36 @@ export default function OpportunityList() {
       })
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadFastFailAssessments = async (opportunities) => {
+    try {
+      setLoadingFastFail(true)
+      
+      // Get opportunity IDs
+      const opportunityIds = opportunities.map(opp => opp.id).filter(Boolean)
+      
+      if (opportunityIds.length === 0) return
+      
+      console.log('Loading Fast-Fail assessments for opportunities:', opportunityIds)
+      
+      // Use batch assessment API
+      const result = await fastFailAPI.batchAssess(opportunityIds)
+      
+      if (result && result.assessments) {
+        const assessmentMap = {}
+        result.assessments.forEach(assessment => {
+          assessmentMap[assessment.opportunity_id] = assessment
+        })
+        setFastFailData(assessmentMap)
+        console.log('Fast-Fail assessments loaded:', assessmentMap)
+      }
+    } catch (error) {
+      console.error('Failed to load Fast-Fail assessments:', error)
+      // Don't show error toast as this is optional enhancement
+    } finally {
+      setLoadingFastFail(false)
     }
   }
 
@@ -146,6 +200,68 @@ export default function OpportunityList() {
     </Button>
   )
 
+  const getFastFailBadge = (opportunityId) => {
+    const assessment = fastFailData[opportunityId]
+    if (!assessment) return null
+
+    const { recommendation, confidence } = assessment
+    
+    switch (recommendation) {
+      case 'EXCLUDE':
+        return (
+          <Badge variant="destructive" className="text-xs">
+            <XCircle className="w-3 h-3 mr-1" />
+            Excluded
+          </Badge>
+        )
+      case 'FLAG':
+        return (
+          <Badge variant="secondary" className="text-xs">
+            <AlertTriangle className="w-3 h-3 mr-1" />
+            Flagged
+          </Badge>
+        )
+      case 'WARN':
+        return (
+          <Badge variant="outline" className="text-xs border-yellow-500 text-yellow-600">
+            <AlertTriangle className="w-3 h-3 mr-1" />
+            Warning
+          </Badge>
+        )
+      case 'PROCEED':
+        return (
+          <Badge variant="default" className="text-xs bg-green-500">
+            <CheckCircle className="w-3 h-3 mr-1" />
+            Proceed
+          </Badge>
+        )
+      default:
+        return null
+    }
+  }
+
+  const getFilteredOpportunities = () => {
+    if (fastFailFilter === 'all') return opportunities
+    
+    return opportunities.filter(opp => {
+      const assessment = fastFailData[opp.id]
+      if (!assessment) return fastFailFilter === 'unassessed'
+      
+      switch (fastFailFilter) {
+        case 'excluded':
+          return assessment.recommendation === 'EXCLUDE'
+        case 'flagged':
+          return assessment.recommendation === 'FLAG'
+        case 'warned':
+          return assessment.recommendation === 'WARN'
+        case 'proceed':
+          return assessment.recommendation === 'PROCEED'
+        default:
+          return true
+      }
+    })
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -170,7 +286,7 @@ export default function OpportunityList() {
           <CardTitle className="text-lg">Filters</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-5">
             <div className="space-y-2">
               <label className="text-sm font-medium">Search</label>
               <div className="relative">
@@ -231,6 +347,32 @@ export default function OpportunityList() {
                 </SelectContent>
               </Select>
             </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium flex items-center">
+                <Shield className="w-4 h-4 mr-1 text-red-500" />
+                Fast-Fail Filter
+              </label>
+              <Select value={fastFailFilter} onValueChange={setFastFailFilter}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Opportunities</SelectItem>
+                  <SelectItem value="proceed">✓ Proceed</SelectItem>
+                  <SelectItem value="warned">⚠ Warned</SelectItem>
+                  <SelectItem value="flagged">🏃 Flagged</SelectItem>
+                  <SelectItem value="excluded">❌ Excluded</SelectItem>
+                  <SelectItem value="unassessed">? Unassessed</SelectItem>
+                </SelectContent>
+              </Select>
+              {loadingFastFail && (
+                <div className="text-xs text-muted-foreground flex items-center">
+                  <RefreshCw className="w-3 h-3 mr-1 animate-spin" />
+                  Loading assessments...
+                </div>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -238,7 +380,12 @@ export default function OpportunityList() {
       {/* Results Summary */}
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          Showing {opportunities.length} of {pagination.total} opportunities
+          Showing {getFilteredOpportunities().length} of {pagination.total} opportunities
+          {fastFailFilter !== 'all' && (
+            <span className="ml-2 text-blue-600 font-medium">
+              (filtered by Fast-Fail: {fastFailFilter})
+            </span>
+          )}
         </p>
         <div className="flex items-center space-x-2">
           <Button
@@ -281,8 +428,8 @@ export default function OpportunityList() {
               </CardContent>
             </Card>
           ))
-        ) : opportunities.length > 0 ? (
-          opportunities.map((opportunity) => (
+        ) : getFilteredOpportunities().length > 0 ? (
+          getFilteredOpportunities().map((opportunity) => (
             <Card key={opportunity.id} className="hover:shadow-md transition-shadow">
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">
@@ -299,6 +446,7 @@ export default function OpportunityList() {
                           <Target className="w-3 h-3 mr-1" />
                           {opportunity.total_score}
                         </Badge>
+                        {getFastFailBadge(opportunity.id)}
                         {opportunity.source_url && (
                           <Button variant="ghost" size="sm" asChild>
                             <a href={opportunity.source_url} target="_blank" rel="noopener noreferrer">
@@ -393,6 +541,7 @@ export default function OpportunityList() {
                 setSearchTerm('')
                 setStatusFilter('all')
                 setSourceFilter('all')
+                setFastFailFilter('all')
                 setPagination({ ...pagination, page: 1 })
               }}>
                 Clear Filters
