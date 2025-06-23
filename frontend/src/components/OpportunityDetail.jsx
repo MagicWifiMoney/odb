@@ -232,7 +232,7 @@ export default function OpportunityDetail() {
                   </p>
                 </div>
                 
-                {opportunity.keywords && opportunity.keywords.length > 0 && (
+                {Array.isArray(opportunity.keywords) && opportunity.keywords.length > 0 && (
                   <div>
                     <h4 className="font-medium mb-2">Keywords</h4>
                     <div className="flex flex-wrap gap-2">
