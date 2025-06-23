@@ -1,14 +1,5 @@
-# Ignore frontend files for backend-only Railway deployment
+docker-compose.redis.yml
 frontend/
-package.json
-package-lock.json
-node_modules/
 *.md
 .git/
-.github/
-.vscode/
-.idea/
-*.log
-.DS_Store
-test_*.py
-*_test.py
+node_modules/
