@@ -12,7 +12,6 @@ schedule==1.2.0
 firecrawl-py==0.0.20
 posthog==5.4.0
 redis==4.5.5
-asyncio
 # ML dependencies temporarily disabled for clean production deployment
 # pandas==2.0.3
 # numpy==1.25.1
