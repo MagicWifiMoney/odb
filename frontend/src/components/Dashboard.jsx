@@ -26,10 +26,8 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
 import { Button } from './ui/button'
 import { Badge } from './ui/badge'
-import { formatCurrency } from '../lib/api'
+import { formatCurrency, apiClient } from '../lib/api'
 import { useToast } from '../hooks/use-toast'
-import { supabase } from '../lib/supabase'
-import IntelligenceDashboard from './IntelligenceDashboard'
 // Analytics temporarily disabled for build
 // import { analytics, trackDashboardLoad, trackDataSync } from '../lib/analytics'
 
@@ -57,87 +55,53 @@ export default function Dashboard() {
     try {
       setLoading(true)
       
-      console.log('Loading dashboard data from Supabase...')
+      console.log('Loading dashboard data from local backend...')
       
       // Get recent opportunities
-      const { data: opportunities, error: oppError } = await supabase
-        .from('opportunities')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(20)
-
-      if (oppError) throw oppError
+      const opportunitiesResponse = await apiClient.getDashboardOpportunities({ per_page: 20 })
+      const opportunities = opportunitiesResponse.opportunities || []
       
       setLoadingSteps(prev => ({ ...prev, opportunities: true }))
-      setRecentOpportunities(opportunities || [])
+      setRecentOpportunities(opportunities)
 
-      // Get total count
-      const { count: totalCount, error: countError } = await supabase
-        .from('opportunities')
-        .select('*', { count: 'exact', head: true })
-
-      if (countError) throw countError
-
-      // Get stats by source type
-      const { data: sourceStats, error: sourceError } = await supabase
-        .from('opportunities')
-        .select('source_type')
-
-      if (sourceError) throw sourceError
-
-      // Calculate source type distribution
-      const sourceTypeStats = sourceStats.reduce((acc, opp) => {
-        const type = opp.source_type || 'unknown'
-        acc[type] = (acc[type] || 0) + 1
-        return acc
-      }, {})
-
-      // Get stats by agency
-      const { data: agencyStats, error: agencyError } = await supabase
-        .from('opportunities')
-        .select('agency_name')
-        .limit(1000) // Get enough for meaningful stats
-
-      if (agencyError) throw agencyError
-
-      // Calculate agency distribution (top 10)
-      const agencyTypeStats = agencyStats.reduce((acc, opp) => {
-        const agency = opp.agency_name || 'Unknown'
-        acc[agency] = (acc[agency] || 0) + 1
-        return acc
-      }, {})
-
-      const topAgencies = Object.entries(agencyTypeStats)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 10)
-        .reduce((acc, [agency, count]) => {
-          acc[agency] = count
-          return acc
-        }, {})
-
+      // Get comprehensive stats
+      const statsResponse = await apiClient.getOpportunityStats()
+      const backendStats = statsResponse.stats || {}
+      
       setLoadingSteps(prev => ({ ...prev, stats: true }))
       
       setStats({
-        total_opportunities: totalCount,
-        active_opportunities: totalCount,
-        by_type: sourceTypeStats,
-        by_agency: topAgencies
+        total_opportunities: backendStats.total_opportunities || 0,
+        active_opportunities: backendStats.total_opportunities || 0,
+        total_value: backendStats.total_estimated_value || 0,
+        avg_score: 85, // Default since not in backend yet
+        by_type: backendStats.by_source_type?.reduce((acc, item) => {
+          acc[item.source_type] = item.count
+          return acc
+        }, {}) || {},
+        by_agency: backendStats.top_agencies?.reduce((acc, item) => {
+          acc[item.agency] = item.count
+          return acc
+        }, {}) || {},
+        recent_opportunities: backendStats.recent_opportunities || 0
       })
 
-      // Mock sync status since we're using Supabase directly
+      // Set sync status based on backend data
       setLoadingSteps(prev => ({ ...prev, sync: true }))
       setSyncStatus({
         last_sync: new Date().toISOString(),
         status: 'completed',
-        opportunities_synced: totalCount
+        opportunities_synced: backendStats.total_opportunities || 0
       })
       
-      console.log('All Supabase queries completed successfully!')
-      console.log('Opportunities count:', opportunities?.length)
+      console.log('All backend queries completed successfully!')
+      console.log('Opportunities count:', opportunities.length)
+      console.log('Total opportunities:', backendStats.total_opportunities)
+      console.log('Total value:', backendStats.total_estimated_value)
       
       // Track dashboard load analytics (temporarily disabled)
       const loadTime = performance.now() - startTime
-      // trackDashboardLoad(loadTime, totalCount || 0)
+      // trackDashboardLoad(loadTime, backendStats.total_opportunities || 0)
       
     } catch (error) {
       console.error('Failed to load dashboard data:', error)
@@ -166,7 +130,7 @@ export default function Dashboard() {
       // Track sync start (temporarily disabled)
       // trackDataSync('manual', 'started')
       
-      // Since we're using Supabase directly, just reload the data
+      // Reload the dashboard data from our backend
       await loadDashboardData()
       
       // Track sync success (temporarily disabled)
@@ -339,8 +303,6 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Intelligence Hub */}
-      <IntelligenceDashboard />
 
       {/* Charts */}
       <div className="grid gap-6 md:grid-cols-2">

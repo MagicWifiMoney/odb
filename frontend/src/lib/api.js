@@ -72,13 +72,13 @@ class ApiClient {
   // Opportunities endpoints
   async getOpportunities(params = {}) {
     const queryString = new URLSearchParams(params).toString()
-    return this.request(`/api/opportunities-working${queryString ? `?${queryString}` : ''}`)
+    return this.request(`/api/opportunities${queryString ? `?${queryString}` : ''}`)
   }
 
   // Optimized endpoint for dashboard - loads minimal data
   async getDashboardOpportunities(params = { per_page: 20 }) {
     const queryString = new URLSearchParams(params).toString()
-    return this.request(`/api/opportunities-working${queryString ? `?${queryString}` : ''}`)
+    return this.request(`/api/opportunities${queryString ? `?${queryString}` : ''}`)
   }
 
   async getOpportunity(id) {
