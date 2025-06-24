@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
 
 # Use environment variable for secret key in production
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'asdf#FGSgvasgf$5$WGT')
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 
 # Enable CORS for all routes
 CORS(app)

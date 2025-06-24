@@ -4,7 +4,7 @@
 # Project: opportunity-dashboard
 # Supabase Username: MagicWifiMoney
 # Created: Production Deployment
-# 
+#
 # INSTRUCTIONS: Copy this content to backend/.env for deployment
 # =============================================================================
 
@@ -12,29 +12,29 @@
 # DATABASE CONFIGURATION
 # =============================================================================
 # Primary database connection (Supabase PostgreSQL)
-DATABASE_URL=postgresql://postgres.zkdrpchjejelgsuuffli:DeepSignal2TheMoon@aws-0-us-east-1.pooler.supabase.com:5432/postgres
+DATABASE_URL=postgresql://username:password@host:port/database
 
 # =============================================================================
 # SUPABASE CONFIGURATION
 # =============================================================================
 # Supabase project: opportunity-dashboard
-# Project reference: zkdrpchjejelgsuuffli
-SUPABASE_URL=https://zkdrpchjejelgsuuffli.supabase.co
-SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InprZHJwY2hqZWplbGdzdXVmZmxpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAyMjY4MTMsImV4cCI6MjA2NTgwMjgxM30.xBBArkhXeFT26BmVI-WNag0qa0hHGdFUmxmlcTi4CGg
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InprZHJwY2hqZWplbGdzdXVmZmxpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MDIyNjgxMywiZXhwIjoyMDY1ODAyODEzfQ.sfXaVkEOIiJMpKdTt7YLauIwxcqjhL1J04Vt92neWR4
+# Project reference: your-project-ref
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 
 # =============================================================================
 # API KEYS (Government Data & AI Services)
 # =============================================================================
 # SAM.gov API - Federal contracting opportunities
-SAM_GOV_API_KEY=rCTGB3OnZVurfr2X7hqDHMt6DUHilFnP7WgtflLf
-SAM_API_KEY=rCTGB3OnZVurfr2X7hqDHMt6DUHilFnP7WgtflLf
+SAM_GOV_API_KEY=your_sam_api_key
+SAM_API_KEY=your_sam_api_key
 
 # Perplexity AI - Market intelligence and analysis
-PERPLEXITY_API_KEY=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
+PERPLEXITY_API_KEY=your_perplexity_api_key
 
 # Firecrawl - Web scraping service
-FIRECRAWL_API_KEY=fc-3613f533df0e42d09306650f54b2f00c
+FIRECRAWL_API_KEY=your_firecrawl_api_key
 
 # Data.gov API (if needed)
 # DATA_GOV_API_KEY=your_data_gov_api_key_here
@@ -44,7 +44,7 @@ FIRECRAWL_API_KEY=fc-3613f533df0e42d09306650f54b2f00c
 # =============================================================================
 FLASK_ENV=production
 FLASK_DEBUG=false
-SECRET_KEY=OpportunityDashboard2024-SecureProductionKey-DeepSignal2TheMoon-RandomString
+SECRET_KEY=your_production_secret_key
 
 # =============================================================================
 # COST TRACKING & BUDGET MANAGEMENT
@@ -58,7 +58,6 @@ COST_CRITICAL_THRESHOLD=0.90
 # =============================================================================
 # FEATURE FLAGS (Production Optimized)
 # =============================================================================
-# Performance & Caching
 FEATURE_REDIS_CACHE=true
 FEATURE_PERFORMANCE_MONITORING=true
 FEATURE_QUERY_OPTIMIZATION=true
@@ -103,4 +102,4 @@ RAILWAY_ENVIRONMENT=production
 
 # Additional government data sources
 # GSA_API_KEY=your_gsa_api_key_here
-# GRANTS_GOV_API_KEY=your_grants_gov_api_key_here 
+# GRANTS_GOV_API_KEY=your_grants_gov_api_key_here

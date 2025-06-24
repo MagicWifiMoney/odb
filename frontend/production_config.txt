@@ -3,7 +3,7 @@
 # =============================================================================
 # Project: opportunity-dashboard
 # Supabase Username: MagicWifiMoney
-# 
+#
 # INSTRUCTIONS: Copy this content to frontend/.env for deployment
 # =============================================================================
 
@@ -20,9 +20,9 @@ VITE_API_URL=https://your-backend-domain.com/api
 # SUPABASE CONFIGURATION (Frontend)
 # =============================================================================
 # Supabase project: opportunity-dashboard
-# Project reference: zkdrpchjejelgsuuffli
-VITE_SUPABASE_URL=https://zkdrpchjejelgsuuffli.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InprZHJwY2hqZWplbGdzdXVmZmxpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAyMjY4MTMsImV4cCI6MjA2NTgwMjgxM30.xBBArkhXeFT26BmVI-WNag0qa0hHGdFUmxmlcTi4CGg
+# Project reference: your-project-ref
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 
 # =============================================================================
 # ENVIRONMENT CONFIGURATION
@@ -38,6 +38,5 @@ VITE_ENVIRONMENT=production
 
 # =============================================================================
 # OPTIONAL: FEATURE FLAGS
-# =============================================================================
 # VITE_ENABLE_DEBUG=false
-# VITE_ENABLE_ANALYTICS=true 
+# VITE_ENABLE_ANALYTICS=true

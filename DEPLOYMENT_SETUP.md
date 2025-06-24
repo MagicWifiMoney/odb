@@ -129,13 +129,13 @@ For production deployment on platforms like Railway, Heroku, or Vercel:
 ### 🏗️ **Project Details:**
 - **Project Name:** opportunity-dashboard
 - **Supabase Username:** MagicWifiMoney
-- **Project Reference:** zkdrpchjejelgsuuffli
+- **Project Reference:** <your-project-ref>
 - **Database:** PostgreSQL (Supabase)
 
 ### 🔑 **API Keys Configured:**
-- ✅ **SAM.gov API:** `rCTGB3OnZVurfr2X7hqDHMt6DUHilFnP7WgtflLf`
-- ✅ **Perplexity AI:** `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`
-- ✅ **Firecrawl:** `fc-3613f533df0e42d09306650f54b2f00c`
+- ✅ **SAM.gov API:** `<your_sam_api_key>`
+- ✅ **Perplexity AI:** `<your_perplexity_api_key>`
+- ✅ **Firecrawl:** `<your_firecrawl_api_key>`
 - ✅ **Supabase:** All keys configured
 
 ### 🚀 **Features Enabled:**

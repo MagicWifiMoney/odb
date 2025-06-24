@@ -23,11 +23,11 @@
 
 ### **Railway Backend**
 ```bash
-DATABASE_URL=postgresql://postgres.zkdrpchjejelgsuuffli:DeepSignal2TheMoon@aws-0-us-east-1.pooler.supabase.com:5432/postgres
-SAM_API_KEY=rCTGB3OnZVurfr2X7hqDHMt6DUHilFnP7WgtflLf
-FIRECRAWL_API_KEY=fc-3613f533df0e42d09306650f54b2f00c
-PERPLEXITY_API_KEY=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
-SUPABASE_URL=https://zkdrpchjejelgsuuffli.supabase.co
+DATABASE_URL=postgresql://username:password@host:port/database
+SAM_API_KEY=your_sam_api_key
+FIRECRAWL_API_KEY=your_firecrawl_api_key
+PERPLEXITY_API_KEY=your_perplexity_api_key
+SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 SECRET_KEY=your-flask-secret-key
@@ -37,7 +37,7 @@ FLASK_ENV=production
 ### **Vercel Frontend**
 ```bash
 VITE_API_BASE_URL=https://your-railway-backend.up.railway.app/api
-VITE_SUPABASE_URL=https://zkdrpchjejelgsuuffli.supabase.co
+VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 
