@@ -1,6 +1,9 @@
 import os
 import json
+import logging
 from typing import Dict, Any
+
+logger = logging.getLogger(__name__)
 
 class FeatureFlags:
     """Simple feature flag system for controlling feature rollouts"""
@@ -22,6 +25,11 @@ class FeatureFlags:
             'detailed_analytics': os.getenv('FEATURE_DETAILED_ANALYTICS', 'false').lower() == 'true',
             'performance_alerts': os.getenv('FEATURE_PERFORMANCE_ALERTS', 'false').lower() == 'true',
             'cost_tracking': os.getenv('FEATURE_COST_TRACKING', 'true').lower() == 'true',
+
+            # Optional API blueprints
+            'fast_fail_api': os.getenv('FEATURE_FAST_FAIL_API', 'false').lower() == 'true',
+            'win_probability_api': os.getenv('FEATURE_WIN_PROBABILITY_API', 'false').lower() == 'true',
+            'compliance_api': os.getenv('FEATURE_COMPLIANCE_API', 'false').lower() == 'true',
             
             # Safety features
             'circuit_breaker': os.getenv('FEATURE_CIRCUIT_BREAKER', 'true').lower() == 'true',
@@ -41,7 +49,7 @@ class FeatureFlags:
                     json_flags = json.load(f)
                     self.flags.update(json_flags)
         except Exception as e:
-            print(f"Warning: Could not load feature flags from JSON: {e}")
+            logger.warning("Could not load feature flags from JSON: %s", e)
     
     def is_enabled(self, flag_name: str) -> bool:
         """Check if a feature flag is enabled"""

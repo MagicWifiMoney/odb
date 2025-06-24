@@ -1,5 +1,6 @@
 import os
 import sys
+import logging
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -12,92 +13,96 @@ from flask import Flask, send_from_directory, jsonify, request
 from flask_cors import CORS
 from src.database import db
 from src.models.opportunity import Opportunity
+from src.config import setup_logging
+from src.config.feature_flags import is_enabled
+
+# Configure logging before importing blueprints
+setup_logging()
+logger = logging.getLogger(__name__)
 
 # Import blueprints with error handling
 try:
     from src.routes.user import user_bp
-    print("✅ User blueprint imported")
+    logger.info("✅ User blueprint imported")
 except Exception as e:
-    print(f"❌ User blueprint import failed: {e}")
+    logger.error("❌ User blueprint import failed: %s", e)
     user_bp = None
 
 try:
     from src.routes.opportunities import opportunities_bp
-    print("✅ Opportunities blueprint imported")
+    logger.info("✅ Opportunities blueprint imported")
 except Exception as e:
-    print(f"❌ Opportunities blueprint import failed: {e}")
+    logger.error("❌ Opportunities blueprint import failed: %s", e)
     opportunities_bp = None
 
 try:
     from src.routes.scraping import scraping_bp
-    print("✅ Scraping blueprint imported")
+    logger.info("✅ Scraping blueprint imported")
 except Exception as e:
-    print(f"❌ Scraping blueprint import failed: {e}")
+    logger.error("❌ Scraping blueprint import failed: %s", e)
     scraping_bp = None
 
 try:
     from src.routes.rfp_enhanced import rfp_enhanced_bp
-    print("✅ RFP Enhanced blueprint imported")
+    logger.info("✅ RFP Enhanced blueprint imported")
 except Exception as e:
-    print(f"❌ RFP Enhanced blueprint import failed: {e}")
+    logger.error("❌ RFP Enhanced blueprint import failed: %s", e)
     rfp_enhanced_bp = None
 
 try:
     from src.routes.perplexity import perplexity_bp
-    print("✅ Perplexity blueprint imported")
+    logger.info("✅ Perplexity blueprint imported")
 except Exception as e:
-    print(f"❌ Perplexity blueprint import failed: {e}")
+    logger.error("❌ Perplexity blueprint import failed: %s", e)
     perplexity_bp = None
 
 try:
     from src.routes.trend_routes import trend_bp
-    print("✅ Trend analysis blueprint imported")
+    logger.info("✅ Trend analysis blueprint imported")
 except Exception as e:
-    print(f"❌ Trend analysis blueprint import failed: {e}")
+    logger.error("❌ Trend analysis blueprint import failed: %s", e)
     trend_bp = None
 
 try:
     from src.routes.cost_routes import cost_bp
-    print("✅ Cost tracking blueprint imported")
+    logger.info("✅ Cost tracking blueprint imported")
 except Exception as e:
-    print(f"❌ Cost tracking blueprint import failed: {e}")
+    logger.error("❌ Cost tracking blueprint import failed: %s", e)
     cost_bp = None
 
-# Intelligence APIs temporarily disabled for clean production deployment
-# try:
-#     from src.routes.fast_fail_api import fast_fail_bp
-#     print("✅ Fast-Fail API blueprint imported")
-# except Exception as e:
-#     print(f"❌ Fast-Fail API blueprint import failed: {e}")
-#     fast_fail_bp = None
-
-# try:
-#     from src.routes.win_probability_api import win_probability_bp
-#     print("✅ Win Probability API blueprint imported")
-# except Exception as e:
-#     print(f"❌ Win Probability API blueprint import failed: {e}")
-#     win_probability_bp = None
-
-# try:
-#     from src.routes.compliance_api import compliance_bp
-#     print("✅ Compliance API blueprint imported")
-# except Exception as e:
-#     print(f"❌ Compliance API blueprint import failed: {e}")
-#     compliance_bp = None
-
-# Set to None for clean deployment
+# Optional intelligence blueprints controlled via feature flags
 fast_fail_bp = None
+if is_enabled('fast_fail_api'):
+    try:
+        from src.routes.fast_fail_api import fast_fail_bp
+        logger.info("✅ Fast-Fail API blueprint imported")
+    except Exception as e:
+        logger.error("❌ Fast-Fail API blueprint import failed: %s", e)
+        fast_fail_bp = None
+
 win_probability_bp = None
+if is_enabled('win_probability_api'):
+    try:
+        from src.routes.win_probability_api import win_probability_bp
+        logger.info("✅ Win Probability API blueprint imported")
+    except Exception as e:
+        logger.error("❌ Win Probability API blueprint import failed: %s", e)
+        win_probability_bp = None
+
 compliance_bp = None
+if is_enabled('compliance_api'):
+    try:
+        from src.routes.compliance_api import compliance_bp
+        logger.info("✅ Compliance API blueprint imported")
+    except Exception as e:
+        logger.error("❌ Compliance API blueprint import failed: %s", e)
+        compliance_bp = None
 # Analytics service
 from datetime import datetime, timedelta
 import random
-import logging
 import time
 
 # Analytics temporarily removed for stability
-
-logger = logging.getLogger(__name__)
 
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
 
@@ -260,10 +265,10 @@ def get_opportunities_simple():
 # Import performance blueprint
 try:
     from src.routes.performance_api import performance_bp
-    print("✅ Performance API blueprint imported successfully")
+    logger.info("✅ Performance API blueprint imported successfully")
 except ImportError as e:
     performance_bp = None
-    print(f"⚠️ Performance API blueprint import failed: {e}")
+    logger.warning("⚠️ Performance API blueprint import failed: %s", e)
 
 # Register blueprints - only if they imported successfully
 blueprints = [
@@ -274,22 +279,21 @@ blueprints = [
     (perplexity_bp, 'perplexity'),
     (performance_bp, 'performance'),
     (trend_bp, 'trend_analysis'),
-    (cost_bp, 'cost_tracking')
-    # Intelligence blueprints temporarily disabled for clean production deployment
-    # (fast_fail_bp, 'fast_fail'),
-    # (win_probability_bp, 'win_probability'),
-    # (compliance_bp, 'compliance')
+    (cost_bp, 'cost_tracking'),
+    (fast_fail_bp, 'fast_fail'),
+    (win_probability_bp, 'win_probability'),
+    (compliance_bp, 'compliance')
 ]
 
 for blueprint, name in blueprints:
     if blueprint:
         try:
             app.register_blueprint(blueprint, url_prefix='/api')
-            print(f"✅ {name} blueprint registered successfully")
+            logger.info("✅ %s blueprint registered successfully", name)
         except Exception as e:
-            print(f"❌ {name} blueprint registration failed: {e}")
+            logger.error("❌ %s blueprint registration failed: %s", name, e)
     else:
-        print(f"⚠️ {name} blueprint skipped (import failed)")
+        logger.warning("⚠️ %s blueprint skipped (import failed)", name)
 
 # Database configuration - support both PostgreSQL (Supabase) and SQLite
 database_url = os.getenv('DATABASE_URL', 'sqlite:///opportunities.db')
@@ -314,12 +318,12 @@ try:
         
         # If connection works, create tables
         db.create_all()
-        print(f"✅ Database connected successfully: {database_url[:50]}...")
+        logger.info("✅ Database connected successfully: %s...", database_url[:50])
         
 except Exception as e:
-    print(f"❌ Database connection failed: {e}")
-    print(f"🔧 DATABASE_URL: {database_url[:50]}...")
-    print("⚠️  App will start but database operations may fail")
+    logger.error("❌ Database connection failed: %s", e)
+    logger.error("🔧 DATABASE_URL: %s...", database_url[:50])
+    logger.warning("⚠️  App will start but database operations may fail")
     
     # For Railway deployment, we still want the app to start
     # so we can see the error in logs and debug
@@ -381,7 +385,7 @@ def bulk_insert_opportunities():
                     db.session.commit()
                     
             except Exception as e:
-                logger.warning(f"Error adding opportunity: {e}")
+                logger.warning("Error adding opportunity: %s", e)
                 continue
         
         # Final commit
@@ -395,7 +399,7 @@ def bulk_insert_opportunities():
         
     except Exception as e:
         db.session.rollback()
-        logger.error(f"Bulk insert error: {str(e)}")
+        logger.error("Bulk insert error: %s", str(e))
         return jsonify({'error': 'Failed to bulk insert opportunities'}), 500
 
 # Enhanced init-data endpoint for better scaling
@@ -479,7 +483,7 @@ def init_large_sample_data():
         
     except Exception as e:
         db.session.rollback()
-        logger.error(f"Large sample data creation error: {str(e)}")
+        logger.error("Large sample data creation error: %s", str(e))
         return jsonify({'error': 'Failed to create large sample data'}), 500
 
 # Performance-optimized opportunities endpoint for large datasets
@@ -577,7 +581,7 @@ def get_opportunities_fast():
         })
         
     except Exception as e:
-        logger.error(f"Fast opportunities fetch error: {str(e)}")
+        logger.error("Fast opportunities fetch error: %s", str(e))
         return jsonify({'error': 'Failed to fetch opportunities'}), 500
 
 # Debug endpoint for testing large dataset queries
@@ -612,7 +616,7 @@ def debug_opportunities():
         })
         
     except Exception as e:
-        logger.error(f"Debug query error: {str(e)}")
+        logger.error("Debug query error: %s", str(e))
         return jsonify({
             'error': str(e),
             'error_type': type(e).__name__
@@ -686,7 +690,7 @@ def get_opportunities_working():
         })
         
     except Exception as e:
-        logger.error(f"Working opportunities error: {str(e)}")
+        logger.error("Working opportunities error: %s", str(e))
         return jsonify({'error': f'Failed to fetch opportunities: {str(e)}'}), 500
 
 # Health check endpoint for Railway
@@ -701,7 +705,7 @@ def health_check():
             'version': '1.0.0'
         }), 200
     except Exception as e:
-        logger.error(f"Health check failed: {str(e)}")
+        logger.error("Health check failed: %s", str(e))
         return jsonify({
             'status': 'unhealthy',
             'error': str(e)
