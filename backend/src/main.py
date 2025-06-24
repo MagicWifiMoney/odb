@@ -689,5 +689,23 @@ def get_opportunities_working():
         logger.error(f"Working opportunities error: {str(e)}")
         return jsonify({'error': f'Failed to fetch opportunities: {str(e)}'}), 500
 
+# Health check endpoint for Railway
+@app.route('/health')
+def health_check():
+    """Health check endpoint for Railway deployment monitoring"""
+    try:
+        # Basic health check - could add database connectivity test here
+        return jsonify({
+            'status': 'healthy',
+            'service': 'odb-backend',
+            'version': '1.0.0'
+        }), 200
+    except Exception as e:
+        logger.error(f"Health check failed: {str(e)}")
+        return jsonify({
+            'status': 'unhealthy',
+            'error': str(e)
+        }), 500
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5002, debug=False)

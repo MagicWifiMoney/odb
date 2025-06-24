@@ -12,3 +12,6 @@ schedule==1.2.0
 firecrawl-py==0.0.20
 posthog==5.4.0
 redis==4.5.5
+gunicorn==21.2.0
+python-Levenshtein==0.25.0
+pandas==2.0.3

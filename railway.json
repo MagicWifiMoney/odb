@@ -1,14 +1,22 @@
 {
   "$schema": "https://railway.app/railway.schema.json",
+  "build": {
+    "buildCommand": "echo 'No build command needed'"
+  },
   "deploy": {
-    "startCommand": "cd backend && python3 -m flask --app src.main run --host=0.0.0.0 --port=$PORT",
-    "healthcheckPath": "/api/health"
+    "startCommand": "cd backend && gunicorn -w 4 -b 0.0.0.0:$PORT src.main:app",
+    "healthcheckPath": "/health",
+    "healthcheckTimeout": 100,
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 10
   },
   "environments": {
     "production": {
       "variables": {
-        "PYTHONPATH": "/app/backend",
-        "FLASK_ENV": "production"
+        "PYTHON_VERSION": "3.9.18",
+        "PORT": "5001",
+        "FLASK_ENV": "production",
+        "FLASK_DEBUG": "False"
       }
     }
   }

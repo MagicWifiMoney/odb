@@ -1,35 +1,44 @@
-# 🎯 Opportunity Dashboard - Intelligent RFP & Grant Discovery Platform
+# ODB - Opportunity Discovery Bot
 
-> **Status**: 🚀 Production Ready | **Latest Version**: v2.0.0 | **Deployment**: Railway + Vercel
+> **Status**: 🚀 Production Ready | **Latest Version**: v2.1.0 | **Live Demo**: [https://odb-frontend.vercel.app](https://odb-frontend.vercel.app)
 
-A comprehensive web application for discovering, tracking, and analyzing government RFPs, grants, and business opportunities with AI-powered insights and intelligent scoring.
+An intelligent system for discovering and tracking government contracting opportunities using AI-powered analysis with automated data collection and real-time insights.
 
 ---
 
-## 📋 **Current Project Status**
+## 🚀 Quick Start
 
-### ✅ **Completed Features**
-- **Full-Stack Architecture**: React frontend + Flask API backend
-- **Database**: PostgreSQL with Supabase integration
-- **Authentication**: Complete user management system
-- **Opportunity Management**: Full CRUD operations
-- **AI-Powered Scoring**: Intelligent opportunity scoring algorithm
-- **Real-time Dashboard**: Interactive charts and analytics
-- **Search & Filtering**: Advanced opportunity discovery
-- **Data Synchronization**: Automated data sync from multiple sources
-- **Responsive Design**: Mobile-first UI with shadcn/ui components
-- **API Integration**: SAM.gov, Perplexity AI, Firecrawl support
+### Live Deployment
+- **Frontend**: [https://odb-frontend.vercel.app](https://odb-frontend.vercel.app) (Vercel)
+- **Backend API**: [https://odb-production.up.railway.app](https://odb-production.up.railway.app) (Railway)
+- **Health Check**: [https://odb-production.up.railway.app/health](https://odb-production.up.railway.app/health)
 
-### 🔄 **In Progress**
-- Railway deployment optimization
-- Frontend dependency resolution
-- Performance monitoring setup
+### ⚙️ Environment Setup for Real Data
 
-### 🎯 **Next Release (v2.1.0)**
-- Enhanced AI recommendations
-- Competitive analysis features
-- Advanced compliance checking
-- Email notification system
+**Required for SAM.gov federal contracts:**
+```bash
+SAM_API_KEY=rCTGB3OnZVurfr2X7hqDHMt6DUHilFnP7WgtflLf
+```
+
+**Optional for enhanced features:**
+```bash
+PERPLEXITY_API_KEY=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
+FIRECRAWL_API_KEY=fc-3613f533df0e42d09306650f54b2f00c
+```
+
+### 🔄 Automated Data Sync System
+
+The system includes a Railway worker service that automatically:
+- **Hourly**: Rotates through APIs for light sync
+- **Daily 2:00 AM**: Comprehensive sync from all sources
+- **Daily 2:30 AM**: AI intelligence analysis (if enabled)
+- **Weekly Sunday 3:00 AM**: Deep analysis and predictions
+
+### Data Sources
+1. **SAM.gov** (requires API key) - Federal contracts and solicitations
+2. **Grants.gov** (free) - Federal grant opportunities
+3. **USASpending.gov** (free) - Historical contract awards
+4. **Web Scraping** (optional) - Additional sources via Firecrawl
 
 ---
 
