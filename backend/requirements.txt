@@ -20,6 +20,9 @@ posthog==5.4.0
 redis==4.5.5
 gunicorn==21.2.0
 python-Levenshtein==0.25.0
+# FastAPI dependencies
+fastapi==0.104.1
+uvicorn==0.24.0
 asyncio
 # ML dependencies with compatibility fixes
 pandas==2.2.3
