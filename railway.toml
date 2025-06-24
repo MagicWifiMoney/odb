@@ -1,5 +1,6 @@
 [build]
 builder = "NIXPACKS"
+buildCommand = "pip install -r requirements.txt && pip install -r backend/requirements.txt"
 
 [deploy]
 restartPolicyType = "ON_FAILURE"

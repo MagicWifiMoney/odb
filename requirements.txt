@@ -12,3 +12,6 @@ schedule==1.2.0
 firecrawl-py==0.0.20
 posthog==5.4.0
 gunicorn==21.2.0
+fastapi>=0.110
+pydantic>=1.10
+openai>=1.0
