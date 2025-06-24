@@ -104,14 +104,46 @@ app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'sta
 # Use environment variable for secret key in production
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'asdf#FGSgvasgf$5$WGT')
 
-# Enable CORS for all routes
-CORS(app)
+# Configure CORS
+FRONTEND_URL = os.getenv('FRONTEND_URL', 'https://odb-frontend.vercel.app')
+CORS(app, resources={
+    r"/api/*": {
+        "origins": [
+            FRONTEND_URL,
+            "http://localhost:3000",
+            "https://rfptracking.com",
+            "https://www.rfptracking.com"
+        ],
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"]
+    }
+})
 
-# Analytics middleware removed for stability
+# Register blueprints if available
+if user_bp:
+    app.register_blueprint(user_bp, url_prefix='/api/user')
+if opportunities_bp:
+    app.register_blueprint(opportunities_bp, url_prefix='/api/opportunities')
+if scraping_bp:
+    app.register_blueprint(scraping_bp, url_prefix='/api/scraping')
+if rfp_enhanced_bp:
+    app.register_blueprint(rfp_enhanced_bp, url_prefix='/api/rfp-enhanced')
+if perplexity_bp:
+    app.register_blueprint(perplexity_bp, url_prefix='/api/perplexity')
+if trend_bp:
+    app.register_blueprint(trend_bp, url_prefix='/api/trends')
+if cost_bp:
+    app.register_blueprint(cost_bp, url_prefix='/api/costs')
+
+@app.before_request
+def before_request():
+    # Add request logging
+    logger.info(f"Request: {request.method} {request.path}")
 
 @app.after_request
 def after_request(response):
-    # Analytics tracking removed for stability
+    # Add response logging
+    logger.info(f"Response: {response.status}")
     return response
 
 # Minimal health endpoint that should always work
