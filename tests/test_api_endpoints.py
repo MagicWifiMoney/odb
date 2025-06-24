@@ -11,7 +11,7 @@ from datetime import datetime
 from unittest.mock import Mock, patch
 
 # Add backend to path
-sys.path.append('/Users/jacobgiebel/odb-1/backend/src')
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'backend', 'src'))
 
 print("🌐 TREND ANALYSIS API ENDPOINTS TEST")
 print("=" * 60)
