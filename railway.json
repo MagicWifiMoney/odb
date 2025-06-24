@@ -7,7 +7,7 @@
     "startCommand": "cd backend && PYTHONPATH=/app/backend python3 -m gunicorn -w 4 -b 0.0.0.0:$PORT src.main:app",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10,
-    "healthcheckPath": "/health"
+    "healthcheckPath": "/api/health"
   },
   "environments": {
     "production": {
