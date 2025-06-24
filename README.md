@@ -75,6 +75,7 @@ cd odb
 # 2. Backend Setup
 cd backend
 pip install -r requirements.txt
+pip install fastapi pydantic uvicorn  # Optional, required for advanced Perplexity endpoints
 cp ../env.example .env  # Configure your environment variables
 
 # 3. Start Backend API
