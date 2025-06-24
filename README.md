@@ -226,6 +226,7 @@ SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cC...
 VITE_API_BASE_URL=https://your-app.railway.app/api
 VITE_SUPABASE_URL=https://zkdrpchjejelgsuuffli.supabase.co
 VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cC...
+VITE_DASHBOARD_LIMIT=200
 ```
 
 ---
