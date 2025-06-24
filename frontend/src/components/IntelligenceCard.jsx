@@ -124,7 +124,7 @@ const IntelligenceCard = ({ type, data, loading, onRefresh }) => {
             </div>
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span>High Probability (>70%):</span>
+                <span>High Probability (&gt;70%):</span>
                 <span className="font-medium">{data?.high_probability_count || 0}</span>
               </div>
               <div className="flex justify-between text-sm">
