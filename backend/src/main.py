@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
+# Create Flask app instance
 app = Flask(__name__)
 CORS(app)
 
