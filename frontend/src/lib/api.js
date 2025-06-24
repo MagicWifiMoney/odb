@@ -1,6 +1,6 @@
 // API Configuration with Railway backend support
-const API_BASE_URL = import.meta.env.VITE_API_URL || 
-                     (import.meta.env.PROD ? 'https://odb-production.up.railway.app' : 'http://localhost:5001')
+const API_BASE_URL = import.meta.env.VITE_API_URL ||
+                     (import.meta.env.PROD ? 'https://odb-production.up.railway.app' : 'http://localhost:5000')
 
 // Log API configuration on startup
 console.log('Using API URL:', API_BASE_URL)

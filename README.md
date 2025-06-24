@@ -206,7 +206,7 @@ git push origin main
 cd frontend
 npm run build
 npx vercel --prod
-# Set VITE_API_BASE_URL to your Railway backend URL
+# Set VITE_API_URL to your Railway backend URL
 ```
 
 ### **Environment Variables for Production**
@@ -223,7 +223,7 @@ SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cC...
 
 **Vercel (Frontend)**
 ```bash
-VITE_API_BASE_URL=https://your-app.railway.app/api
+VITE_API_URL=https://your-app.railway.app
 VITE_SUPABASE_URL=https://zkdrpchjejelgsuuffli.supabase.co
 VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cC...
 ```

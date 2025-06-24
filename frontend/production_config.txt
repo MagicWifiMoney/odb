@@ -11,10 +11,10 @@
 # API CONFIGURATION
 # =============================================================================
 # Backend API URL (update with your actual backend domain)
-VITE_API_URL=https://your-backend-domain.com/api
+VITE_API_URL=https://your-backend-domain.com
 
 # For local development, you can use:
-# VITE_API_URL=http://localhost:5001/api
+# VITE_API_URL=http://localhost:5000
 
 # =============================================================================
 # SUPABASE CONFIGURATION (Frontend)

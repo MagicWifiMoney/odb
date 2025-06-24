@@ -85,9 +85,8 @@ export default function OpportunityDetail() {
       
       // Try to fetch score explanation from backend API (optional)
       try {
-        // Use correct backend URL (Cursor agent changed port to 5002)
-        const API_BASE_URL = import.meta.env.VITE_API_URL || 
-                            (import.meta.env.PROD ? 'https://api.rfptracking.com' : 'http://localhost:5002')
+        const API_BASE_URL = import.meta.env.VITE_API_URL ||
+                            (import.meta.env.PROD ? 'https://api.rfptracking.com' : 'http://localhost:5000')
         const response = await fetch(`${API_BASE_URL}/api/opportunities/${id}/score-explanation`)
         if (response.ok) {
           const scoreData = await response.json()
