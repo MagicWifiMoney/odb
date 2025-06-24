@@ -50,9 +50,9 @@ class APIMonitor:
         self.last_run = {}
         self.api_rotation_index = 0
         self.apis = [
-            {'name': 'SAM.gov', 'endpoint': '/sync/sam', 'requires_key': True, 'key': SAM_API_KEY},
-            {'name': 'Grants.gov', 'endpoint': '/sync/grants', 'requires_key': False, 'key': None},
-            {'name': 'USASpending', 'endpoint': '/sync/usaspending', 'requires_key': False, 'key': None},
+            {'name': 'SAM.gov', 'endpoint': '/sync', 'source': 'sam', 'requires_key': True, 'key': SAM_API_KEY},
+            {'name': 'Grants.gov', 'endpoint': '/sync', 'source': 'grants', 'requires_key': False, 'key': None},
+            {'name': 'USASpending', 'endpoint': '/sync', 'source': 'usaspending', 'requires_key': False, 'key': None},
         ]
         
         # Filter APIs based on available keys
@@ -104,7 +104,9 @@ class APIMonitor:
         
         logger.info(f"Syncing {api['name']} (rotation {self.api_rotation_index})")
         
-        result = self.make_api_call(api['endpoint'])
+        # Use general sync endpoint with source parameter
+        data = {'source': api['source']} if api.get('source') else {}
+        result = self.make_api_call(api['endpoint'], data=data)
         
         if 'error' not in result:
             logger.info(f"Successfully synced {api['name']}")
@@ -119,7 +121,8 @@ class APIMonitor:
         success_count = 0
         for api in self.available_apis:
             logger.info(f"Syncing {api['name']}")
-            result = self.make_api_call(api['endpoint'])
+            data = {'source': api['source']} if api.get('source') else {}
+            result = self.make_api_call(api['endpoint'], data=data)
             
             if 'error' not in result:
                 logger.info(f"Successfully synced {api['name']}")
@@ -190,13 +193,6 @@ def main():
     logger.info(f"Railway Environment: {IS_RAILWAY}")
     logger.info(f"Backend URL: {BACKEND_URL}")
     logger.info(f"Available APIs: {len(monitor.available_apis)}")
-    
-    # Check backend connectivity
-    health_check = monitor.make_api_call('/health', method='GET')
-    if 'error' in health_check:
-        logger.error(f"Backend health check failed: {health_check['error']}")
-    else:
-        logger.info("Backend connectivity confirmed")
     
     # Schedule tasks
     schedule.every().hour.do(monitor.sync_single_api)
