@@ -75,7 +75,7 @@ cd odb
 # 2. Backend Setup
 cd backend
 pip install -r requirements.txt
-cp ../env.example .env  # Configure your environment variables
+cp .env.example .env  # Copy and customize environment variables
 
 # 3. Start Backend API
 python -m flask --app src.main run --debug
@@ -90,7 +90,13 @@ npm run dev
 
 ### **Environment Configuration**
 
-Create a `.env` file in the backend directory:
+Copy the provided `.env.example` in the `backend` directory and rename it to `.env`:
+
+```bash
+cp backend/.env.example backend/.env
+```
+
+Then update the values as needed:
 
 ```bash
 # Database
