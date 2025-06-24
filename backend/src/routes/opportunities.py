@@ -2,7 +2,7 @@ from flask import Blueprint, request, jsonify
 from datetime import datetime, date, timedelta
 from sqlalchemy import and_, or_, desc, asc
 from src.database import db
-from src.models.opportunity import Opportunity
+from src.models.opportunity import Opportunity, DataSource, SyncLog
 from src.services.scoring_service import ScoringService
 from src.services.data_sync_service import DataSyncService
 import logging
@@ -411,4 +411,59 @@ def get_sync_status():
     except Exception as e:
         logger.error(f"Error fetching sync status: {str(e)}")
         return jsonify({'error': 'Failed to fetch sync status'}), 500
+
+
+@opportunities_bp.route('/sync/clear-and-sync', methods=['POST'])
+def clear_and_sync():
+    """Clear sample data and trigger real government data sync"""
+    try:
+        # Clear existing data
+        logger.info("Clearing sample data...")
+        opportunity_count = Opportunity.query.count()
+        Opportunity.query.delete()
+        
+        source_count = DataSource.query.count()
+        DataSource.query.delete()
+        
+        log_count = SyncLog.query.count()
+        SyncLog.query.delete()
+        
+        db.session.commit()
+        
+        logger.info(f"Cleared {opportunity_count} opportunities, {source_count} sources, {log_count} logs")
+        
+        # Trigger real sync
+        sync_service = DataSyncService()
+        results = sync_service.sync_all_sources()
+        
+        return jsonify({
+            'message': 'Sample data cleared and real sync triggered',
+            'cleared': {
+                'opportunities': opportunity_count,
+                'data_sources': source_count,
+                'sync_logs': log_count
+            },
+            'sync_results': results
+        })
+        
+    except Exception as e:
+        logger.error(f"Error during clear and sync: {str(e)}")
+        return jsonify({'error': 'Failed to clear and sync data'}), 500
+
+
+@opportunities_bp.route('/sync/force', methods=['POST'])
+def force_sync():
+    """Force immediate sync of all data sources"""
+    try:
+        sync_service = DataSyncService()
+        results = sync_service.sync_all_sources()
+        
+        return jsonify({
+            'message': 'Force sync completed',
+            'results': results
+        })
+        
+    except Exception as e:
+        logger.error(f"Error during force sync: {str(e)}")
+        return jsonify({'error': 'Failed to force sync'}), 500
 
