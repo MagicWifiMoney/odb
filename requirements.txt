@@ -3,7 +3,7 @@ Flask-CORS==4.0.0
 Flask-SQLAlchemy==3.0.5
 requests==2.31.0
 python-dotenv==1.0.0
-psycopg2-binary==2.9.9
+psycopg2-binary==2.9.10
 fuzzywuzzy==0.18.0
 python-dateutil==2.8.2
 supabase==2.15.3
@@ -12,3 +12,8 @@ schedule==1.2.0
 firecrawl-py==0.0.20
 posthog==5.4.0
 gunicorn==21.2.0
+pandas==2.2.3
+numpy==1.26.4
+scikit-learn==1.5.1
+scipy==1.14.1
+statsmodels==0.14.2

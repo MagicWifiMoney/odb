@@ -64,7 +64,7 @@ source .env
 # Validate required environment variables
 required_vars=("DATABASE_URL" "SUPABASE_URL" "SUPABASE_KEY" "SECRET_KEY")
 for var in "${required_vars[@]}"; do
-    if [ -z "${!var}" ] || [ "${!var}" = "your_${var,,}_here" ]; then
+    if [ -z "${!var}" ] || [[ "${!var}" == *"your_"*"_here" ]]; then
         print_error "Required environment variable $var is not set or has default value"
         exit 1
     fi
