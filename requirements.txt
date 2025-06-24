@@ -11,3 +11,4 @@ aiohttp>=3.11.18
 schedule==1.2.0
 firecrawl-py==0.0.20
 posthog==5.4.0
+gunicorn==21.2.0
