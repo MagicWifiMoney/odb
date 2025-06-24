@@ -1,5 +1,6 @@
 // API Configuration with Railway backend support
-const API_BASE_URL = import.meta.env.VITE_API_URL || 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
+                     import.meta.env.VITE_API_URL || 
                      (import.meta.env.PROD ? 'https://odb-production.up.railway.app' : 'http://localhost:5555')
 
 // Log API configuration on startup
@@ -85,14 +86,14 @@ class ApiClient {
   }
 
   async searchOpportunities(searchData) {
-    return this.request('/opportunities/search', {
+    return this.request('/api/opportunities/search', {
       method: 'POST',
       body: JSON.stringify(searchData),
     })
   }
 
   async getOpportunityStats() {
-    return this.request('/opportunities/stats')
+    return this.request('/api/opportunities/stats')
   }
 
   async getScoreExplanation(id, keywords = []) {
@@ -102,38 +103,38 @@ class ApiClient {
 
   // Sync endpoints
   async syncData() {
-    return this.request('/sync', { method: 'POST' })
+    return this.request('/api/sync', { method: 'POST' })
   }
 
   async getSyncStatus() {
-    return this.request('/sync/status')
+    return this.request('/api/sync/status')
   }
 
   // Scraping endpoints
   async getScrapingSources() {
-    return this.request('/scraping/sources')
+    return this.request('/api/scraping/sources')
   }
 
   async scrapeSource(sourceKey) {
-    return this.request('/scraping/scrape-source', {
+    return this.request('/api/scraping/scrape-source', {
       method: 'POST',
       body: JSON.stringify({ source_key: sourceKey }),
     })
   }
 
   async scrapeCustomUrl(url, sourceName = 'Custom') {
-    return this.request('/scraping/scrape-url', {
+    return this.request('/api/scraping/scrape-url', {
       method: 'POST',
       body: JSON.stringify({ url, source_name: sourceName }),
     })
   }
 
   async syncAllScraping() {
-    return this.request('/scraping/sync-all', { method: 'POST' })
+    return this.request('/api/scraping/sync-all', { method: 'POST' })
   }
 
   async testFirecrawl(url = 'https://example.com') {
-    return this.request('/scraping/test', {
+    return this.request('/api/scraping/test', {
       method: 'POST',
       body: JSON.stringify({ url }),
     })
@@ -141,39 +142,39 @@ class ApiClient {
 
   // Perplexity AI endpoints
   async searchFinancialData(query) {
-    return this.request('/perplexity/search', {
+    return this.request('/api/perplexity/search', {
       method: 'POST',
       body: JSON.stringify({ query }),
     })
   }
 
   async getMarketAnalysis() {
-    return this.request('/perplexity/market-analysis')
+    return this.request('/api/perplexity/market-analysis')
   }
 
   async getFinancialMetrics() {
-    return this.request('/perplexity/financial-metrics')
+    return this.request('/api/perplexity/financial-metrics')
   }
 
   async predictOpportunities(sector = null) {
     const params = sector ? `?sector=${encodeURIComponent(sector)}` : ''
-    return this.request(`/perplexity/predict-opportunities${params}`)
+    return this.request(`/api/perplexity/predict-opportunities${params}`)
   }
 
   async getPerplexityStatus() {
-    return this.request('/perplexity/status')
+    return this.request('/api/perplexity/status')
   }
 
   // Advanced Perplexity AI Intelligence endpoints
   async enrichOpportunity(opportunity) {
-    return this.request('/perplexity/enrich-opportunity', {
+    return this.request('/api/perplexity/enrich-opportunity', {
       method: 'POST',
       body: JSON.stringify({ opportunity }),
     })
   }
 
   async scoreOpportunity(opportunity, userProfile = null) {
-    return this.request('/perplexity/score-opportunity', {
+    return this.request('/api/perplexity/score-opportunity', {
       method: 'POST',
       body: JSON.stringify({ 
         opportunity, 
@@ -183,7 +184,7 @@ class ApiClient {
   }
 
   async analyzeCompetitiveLandscape(naicsCodes, agency, timeframe = '2years') {
-    return this.request('/perplexity/competitive-landscape', {
+    return this.request('/api/perplexity/competitive-landscape', {
       method: 'POST',
       body: JSON.stringify({ 
         naics_codes: naicsCodes,
@@ -194,28 +195,28 @@ class ApiClient {
   }
 
   async bulkEnrichOpportunities(opportunityIds) {
-    return this.request('/perplexity/bulk-enrich', {
+    return this.request('/api/perplexity/bulk-enrich', {
       method: 'POST',
       body: JSON.stringify({ opportunity_ids: opportunityIds }),
     })
   }
 
   async analyzeCompliance(opportunity) {
-    return this.request('/perplexity/compliance-analysis', {
+    return this.request('/api/perplexity/compliance-analysis', {
       method: 'POST',
       body: JSON.stringify({ opportunity }),
     })
   }
 
   async generateSmartAlerts(userProfile = null) {
-    return this.request('/perplexity/smart-alerts', {
+    return this.request('/api/perplexity/smart-alerts', {
       method: 'POST',
       body: JSON.stringify({ user_profile: userProfile }),
     })
   }
 
   async analyzeMarketTrends(timeframe = '6months', focusAreas = []) {
-    return this.request('/perplexity/trend-analysis', {
+    return this.request('/api/perplexity/trend-analysis', {
       method: 'POST',
       body: JSON.stringify({ 
         timeframe: timeframe,
@@ -225,7 +226,7 @@ class ApiClient {
   }
 
   async forecastMarketConditions(horizon = '12months') {
-    return this.request('/perplexity/market-forecast', {
+    return this.request('/api/perplexity/market-forecast', {
       method: 'POST',
       body: JSON.stringify({ horizon: horizon }),
     })

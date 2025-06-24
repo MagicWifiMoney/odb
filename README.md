@@ -17,13 +17,13 @@ An intelligent system for discovering and tracking government contracting opport
 
 **Required for SAM.gov federal contracts:**
 ```bash
-SAM_API_KEY=rCTGB3OnZVurfr2X7hqDHMt6DUHilFnP7WgtflLf
+SAM_API_KEY=your_sam_gov_api_key_here
 ```
 
 **Optional for enhanced features:**
 ```bash
-PERPLEXITY_API_KEY=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
-FIRECRAWL_API_KEY=fc-3613f533df0e42d09306650f54b2f00c
+PERPLEXITY_API_KEY=your_perplexity_api_key_here
+FIRECRAWL_API_KEY=your_firecrawl_api_key_here
 ```
 
 ### 🔄 Automated Data Sync System
@@ -216,7 +216,7 @@ npx vercel --prod
 DATABASE_URL=postgresql://... (auto-provided by Railway)
 SECRET_KEY=your-production-secret-key
 FLASK_ENV=production
-SUPABASE_URL=https://zkdrpchjejelgsuuffli.supabase.co
+SUPABASE_URL=https://your_project_id.supabase.co
 SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cC...
 SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cC...
 ```
@@ -224,7 +224,7 @@ SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cC...
 **Vercel (Frontend)**
 ```bash
 VITE_API_BASE_URL=https://your-app.railway.app/api
-VITE_SUPABASE_URL=https://zkdrpchjejelgsuuffli.supabase.co
+VITE_SUPABASE_URL=https://your_project_id.supabase.co
 VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cC...
 ```
 

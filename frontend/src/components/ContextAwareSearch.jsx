@@ -2,7 +2,7 @@
  * Context-Aware Search Component
  * Uses user context and history to improve search relevance and reduce redundant queries
  */
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { Search, History, Zap, Brain, DollarSign, Clock, Target, BookOpen, RefreshCw } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -45,29 +45,80 @@ export default function ContextAwareSearch({
     setSearchQuery(query)
   }, [query])
 
-  // Analyze user context and generate smart suggestions
-  useEffect(() => {
-    generateContextSuggestions()
-    generateSmartSuggestions()
-  }, [userContext, searchHistory])
+  // Memoize user context to prevent unnecessary re-renders
+  const memoizedUserContext = useMemo(() => userContext, [
+    userContext?.industry, 
+    userContext?.company, 
+    userContext?.focus_areas?.join(',')
+  ])
 
-  const generateContextSuggestions = () => {
+  // Memoize search history to prevent unnecessary re-renders  
+  const memoizedSearchHistory = useMemo(() => searchHistory, [
+    searchHistory?.length,
+    searchHistory?.slice(-5)?.map(h => h.query)?.join(',')
+  ])
+
+  // Helper functions first
+  const extractTopics = useCallback((searches) => {
+    const topics = new Set()
+    searches.forEach(search => {
+      const words = search.query?.toLowerCase().split(' ') || []
+      words.forEach(word => {
+        if (word.length > 4 && !['analysis', 'market', 'government', 'contract'].includes(word)) {
+          topics.add(word)
+        }
+      })
+    })
+    return Array.from(topics).slice(0, 3)
+  }, [])
+
+  const analyzeSearchPatterns = useCallback((history) => {
+    const patterns = []
+    
+    // Look for market research followed by competitive analysis
+    const hasMarketResearch = history.some(h => h.category === 'Market Research')
+    const hasCompetitive = history.some(h => h.category === 'Competitive Intelligence')
+    
+    if (hasMarketResearch && !hasCompetitive) {
+      patterns.push({
+        suggestion: 'Competitive landscape analysis',
+        template: 'COMPETITOR_ANALYSIS',
+        reason: 'Complete your market research'
+      })
+    }
+
+    // Look for financial analysis followed by opportunity evaluation
+    const hasFinancial = history.some(h => h.category === 'Financial Analysis')
+    const hasOpportunity = history.some(h => h.category === 'Opportunity Analysis')
+    
+    if (hasFinancial && !hasOpportunity) {
+      patterns.push({
+        suggestion: 'Win probability assessment',
+        template: 'WIN_PROBABILITY',
+        reason: 'Evaluate specific opportunities'
+      })
+    }
+
+    return patterns
+  }, [])
+
+  const generateContextSuggestions = useCallback(() => {
     const suggestions = []
 
     // Based on user's industry/sector
-    if (userContext.industry) {
+    if (memoizedUserContext.industry) {
       suggestions.push({
         type: 'context',
-        suggestion: `${userContext.industry} market trends`,
+        suggestion: `${memoizedUserContext.industry} market trends`,
         template: 'SECTOR_DEEP_DIVE',
-        reason: `Based on your ${userContext.industry} focus`,
+        reason: `Based on your ${memoizedUserContext.industry} focus`,
         icon: '🎯'
       })
     }
 
     // Based on recent searches
-    if (searchHistory.length > 0) {
-      const recentTopics = extractTopics(searchHistory.slice(-5))
+    if (memoizedSearchHistory.length > 0) {
+      const recentTopics = extractTopics(memoizedSearchHistory.slice(-5))
       recentTopics.forEach(topic => {
         suggestions.push({
           type: 'history',
@@ -105,9 +156,9 @@ export default function ContextAwareSearch({
     }
 
     setContextSuggestions(suggestions.slice(0, 4))
-  }
+  }, [memoizedUserContext, memoizedSearchHistory, extractTopics])
 
-  const generateSmartSuggestions = () => {
+  const generateSmartSuggestions = useCallback(() => {
     const suggestions = []
 
     // Check for cached data that might be relevant
@@ -132,8 +183,8 @@ export default function ContextAwareSearch({
     })
 
     // Suggest complementary queries based on search patterns
-    if (searchHistory.length > 2) {
-      const patterns = analyzeSearchPatterns(searchHistory)
+    if (memoizedSearchHistory.length > 2) {
+      const patterns = analyzeSearchPatterns(memoizedSearchHistory)
       patterns.forEach(pattern => {
         suggestions.push({
           type: 'pattern',
@@ -147,50 +198,13 @@ export default function ContextAwareSearch({
     }
 
     setSmartSuggestions(suggestions.slice(0, 3))
-  }
+  }, [memoizedSearchHistory, getCachedData, analyzeSearchPatterns])
 
-  const extractTopics = (searches) => {
-    const topics = new Set()
-    searches.forEach(search => {
-      const words = search.query?.toLowerCase().split(' ') || []
-      words.forEach(word => {
-        if (word.length > 4 && !['analysis', 'market', 'government', 'contract'].includes(word)) {
-          topics.add(word)
-        }
-      })
-    })
-    return Array.from(topics).slice(0, 3)
-  }
-
-  const analyzeSearchPatterns = (history) => {
-    const patterns = []
-    
-    // Look for market research followed by competitive analysis
-    const hasMarketResearch = history.some(h => h.category === 'Market Research')
-    const hasCompetitive = history.some(h => h.category === 'Competitive Intelligence')
-    
-    if (hasMarketResearch && !hasCompetitive) {
-      patterns.push({
-        suggestion: 'Competitive landscape analysis',
-        template: 'COMPETITOR_ANALYSIS',
-        reason: 'Complete your market research'
-      })
-    }
-
-    // Look for financial analysis followed by opportunity evaluation
-    const hasFinancial = history.some(h => h.category === 'Financial Analysis')
-    const hasOpportunity = history.some(h => h.category === 'Opportunity Analysis')
-    
-    if (hasFinancial && !hasOpportunity) {
-      patterns.push({
-        suggestion: 'Win probability assessment',
-        template: 'WIN_PROBABILITY',
-        reason: 'Evaluate specific opportunities'
-      })
-    }
-
-    return patterns
-  }
+  // Analyze user context and generate smart suggestions
+  useEffect(() => {
+    generateContextSuggestions()
+    generateSmartSuggestions()
+  }, [generateContextSuggestions, generateSmartSuggestions])
 
   const handleTemplateSelect = (templateId) => {
     const template = QUERY_TEMPLATES[templateId]

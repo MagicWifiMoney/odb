@@ -19,15 +19,15 @@ cp .env.example .env
 Edit `backend/.env` with your credentials:
 ```bash
 # Database (Supabase)
-DATABASE_URL=postgresql://postgres.zkdrpchjejelgsuuffli:DeepSignal2TheMoon@aws-0-us-east-1.pooler.supabase.com:5432/postgres
-SUPABASE_URL=https://zkdrpchjejelgsuuffli.supabase.co
-SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+DATABASE_URL=postgresql://postgres.your_project_id:your_password@aws-0-us-east-1.pooler.supabase.com:5432/postgres
+SUPABASE_URL=https://your_project_id.supabase.co
+SUPABASE_ANON_KEY=your_supabase_anon_key_here
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key_here
 
 # API Keys
-SAM_API_KEY=rCTGB3OnZVurfr2X7hqDHMt6DUHilFnP7WgtflLf
-PERPLEXITY_API_KEY=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
-FIRECRAWL_API_KEY=fc-3613f533df0e42d09306650f54b2f00c
+SAM_API_KEY=your_sam_gov_api_key_here
+PERPLEXITY_API_KEY=your_perplexity_api_key_here
+FIRECRAWL_API_KEY=your_firecrawl_api_key_here
 
 # Flask
 SECRET_KEY=your-super-secret-key-here
@@ -43,8 +43,8 @@ cp .env.local.template .env.local
 Edit `frontend/.env.local`:
 ```bash
 VITE_API_BASE_URL=http://localhost:5000/api
-VITE_SUPABASE_URL=https://zkdrpchjejelgsuuffli.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+VITE_SUPABASE_URL=https://your_project_id.supabase.co
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key_here
 ```
 
 ## Local Development
@@ -81,12 +81,12 @@ npm run dev
 2. **Set Environment Variables in Railway**
    ```bash
    DATABASE_URL=postgresql://... (auto-provided by Railway PostgreSQL)
-   SUPABASE_URL=https://zkdrpchjejelgsuuffli.supabase.co
-   SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-   SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-   SAM_API_KEY=rCTGB3OnZVurfr2X7hqDHMt6DUHilFnP7WgtflLf
-   PERPLEXITY_API_KEY=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
-   FIRECRAWL_API_KEY=fc-3613f533df0e42d09306650f54b2f00c
+   SUPABASE_URL=https://your_project_id.supabase.co
+   SUPABASE_ANON_KEY=your_supabase_anon_key_here
+   SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key_here
+   SAM_API_KEY=your_sam_gov_api_key_here
+   PERPLEXITY_API_KEY=your_perplexity_api_key_here
+   FIRECRAWL_API_KEY=your_firecrawl_api_key_here
    SECRET_KEY=your-production-secret-key
    FLASK_ENV=production
    PORT=5001
@@ -107,8 +107,8 @@ npm run dev
 2. **Set Environment Variables in Vercel**
    ```bash
    VITE_API_BASE_URL=https://your-railway-app.up.railway.app/api
-   VITE_SUPABASE_URL=https://zkdrpchjejelgsuuffli.supabase.co
-   VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+   VITE_SUPABASE_URL=https://your_project_id.supabase.co
+   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key_here
    ```
 
 3. **Deploy**

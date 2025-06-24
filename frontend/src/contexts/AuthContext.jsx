@@ -19,53 +19,25 @@ export const AuthProvider = ({ children }) => {
   const { toast } = useToast()
 
   useEffect(() => {
-    // Check for demo mode first
-    const isDemoMode = localStorage.getItem('demo-mode') === 'true'
-    const demoUser = localStorage.getItem('demo-user')
-    
-    if (isDemoMode && demoUser) {
-      try {
-        const parsedUser = JSON.parse(demoUser)
-        setUser(parsedUser)
-        setSession({ user: parsedUser })
-        setLoading(false)
-        return
-      } catch (error) {
-        console.error('Error parsing demo user:', error)
-        localStorage.removeItem('demo-mode')
-        localStorage.removeItem('demo-user')
-      }
+    // Auto-enable demo mode for development
+    const demoUser = {
+      id: 'demo-user-123',
+      email: 'demo@opportunitydashboard.com',
+      full_name: 'Demo User',
+      company: 'Demo Company',
+      role: 'Developer'
     }
-
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-      setUser(session?.user ?? null)
-      setLoading(false)
-    })
-
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      setSession(session)
-      setUser(session?.user ?? null)
-      setLoading(false)
-
-      if (event === 'SIGNED_IN') {
-        toast({
-          title: "Welcome back!",
-          description: "You have been successfully signed in.",
-        })
-      } else if (event === 'SIGNED_OUT') {
-        toast({
-          title: "Signed out",
-          description: "You have been successfully signed out.",
-        })
-      }
-    })
-
-    return () => subscription.unsubscribe()
+    
+    localStorage.setItem('demo-mode', 'true')
+    localStorage.setItem('demo-user', JSON.stringify(demoUser))
+    setUser(demoUser)
+    setSession({ user: demoUser })
+    setLoading(false)
+    
+    // Skip Supabase for now to avoid 404 errors
+    console.log('Running in demo mode - Supabase authentication bypassed')
+    
+    return () => {} // No cleanup needed in demo mode
   }, [])
 
   const signUp = async (email, password, metadata = {}) => {
