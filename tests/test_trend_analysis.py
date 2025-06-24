@@ -14,7 +14,7 @@ from datetime import datetime, timedelta
 from unittest.mock import Mock, patch
 
 # Add backend to path
-sys.path.append('backend/src')
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'backend', 'src'))
 
 from services.trend_analysis_engine import (
     TimeSeriesAnalyzer, TrendAggregator, TrendAnalysisConfig,

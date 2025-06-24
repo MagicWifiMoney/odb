@@ -12,7 +12,7 @@ import numpy as np
 from datetime import datetime, timedelta
 
 # Add backend to path
-sys.path.append('/Users/jacobgiebel/odb-1/backend/src')
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'backend', 'src'))
 
 print("🎯 WIN PROBABILITY ML CORE TEST")
 print("=" * 60)

@@ -8,8 +8,8 @@ import sys
 from dotenv import load_dotenv
 
 # Add backend to path
-backend_dir = os.path.join(os.path.dirname(__file__), 'backend')
-sys.path.insert(0, backend_dir)
+backend_dir = os.path.join(os.path.dirname(__file__), '..', 'backend')
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'backend', 'src'))
 
 # Load environment
 load_dotenv(os.path.join(backend_dir, '.env'))

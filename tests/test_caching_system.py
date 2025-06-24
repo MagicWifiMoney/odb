@@ -12,7 +12,7 @@ import json
 from datetime import datetime
 
 # Add backend to path
-sys.path.append('backend/src')
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'backend', 'src'))
 
 from services.cache_service import IntelligentCache, CacheConfig, CacheStrategy
 from services.perplexity_client import EnhancedPerplexityClient, PerplexityConfig, PerplexityQuery, QueryType

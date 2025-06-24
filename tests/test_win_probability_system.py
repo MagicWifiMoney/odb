@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 from unittest.mock import Mock, patch
 
 # Add backend to path
-sys.path.append('/Users/jacobgiebel/odb-1/backend/src')
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'backend', 'src'))
 
 print("🎯 WIN PROBABILITY ML SYSTEM TEST SUITE")
 print("=" * 70)
