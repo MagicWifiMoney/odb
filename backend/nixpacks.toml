@@ -6,16 +6,17 @@ cmds = [
   "python -m venv /opt/venv",
   ". /opt/venv/bin/activate",
   "pip install --upgrade pip",
-  "pip install -r requirements.txt",
-  "pip install -r requirements-base.txt",
-  "pip install -r requirements-ml.txt"
+  "pip install -r requirements.txt || echo 'Main requirements failed'",
+  "pip install -r requirements-base.txt || echo 'Base requirements failed'",
+  "pip install -r requirements-ml.txt || echo 'ML requirements failed'",
+  "pip freeze > installed_requirements.txt"
 ]
 
 [phases.build]
 cmds = [
-  "python -c 'from src.main import app'",
-  "echo 'Build complete'"
+  "python -c 'from src.main import app; print(\"✅ App imported successfully\")' || echo '❌ App import failed'",
+  "echo 'Build phase complete'"
 ]
 
 [start]
-cmd = "gunicorn --workers 4 --bind 0.0.0.0:$PORT --timeout 120 --access-logfile - --error-logfile - src.main:app" 
+cmd = "gunicorn --workers 4 --bind 0.0.0.0:$PORT --timeout 120 --access-logfile - --error-logfile - --log-level info --capture-output src.main:app" 

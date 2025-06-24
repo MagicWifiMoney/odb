@@ -1,9 +1,18 @@
 import os
 import sys
 from dotenv import load_dotenv
+import logging
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 # Load environment variables from .env file
 load_dotenv()
+logger.info("Environment variables loaded")
 
 # DON'T CHANGE THIS !!!
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
@@ -112,10 +121,11 @@ CORS(app, resources={
             FRONTEND_URL,
             "http://localhost:3000",
             "https://rfptracking.com",
-            "https://www.rfptracking.com"
+            "https://www.rfptracking.com",
+            "https://api.rfptracking.com"  # Added API domain
         ],
         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        "allow_headers": ["Content-Type", "Authorization"]
+        "allow_headers": ["Content-Type", "Authorization", "X-Requested-With"]
     }
 })
 
@@ -738,6 +748,33 @@ def health_check():
             'status': 'unhealthy',
             'error': str(e)
         }), 500
+
+# Error handlers
+@app.errorhandler(404)
+def not_found_error(error):
+    logger.error(f"404 error: {error}")
+    return jsonify({
+        'error': 'Not Found',
+        'message': str(error)
+    }), 404
+
+@app.errorhandler(500)
+def internal_error(error):
+    logger.error(f"500 error: {error}")
+    db.session.rollback()
+    return jsonify({
+        'error': 'Internal Server Error',
+        'message': str(error)
+    }), 500
+
+@app.errorhandler(Exception)
+def unhandled_exception(error):
+    logger.error(f"Unhandled exception: {error}")
+    db.session.rollback()
+    return jsonify({
+        'error': 'Internal Server Error',
+        'message': 'An unexpected error occurred'
+    }), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001, debug=False)
