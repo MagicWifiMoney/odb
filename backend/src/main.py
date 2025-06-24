@@ -101,13 +101,69 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
 
-# Use environment variable for secret key in production
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'asdf#FGSgvasgf$5$WGT')
-
-# Enable CORS for all routes
-CORS(app)
-
 # Analytics middleware removed for stability
+
+_configured = False
+
+def create_app():
+    """Configure Flask app, register blueprints and initialize database."""
+    global _configured
+    if _configured:
+        return app
+
+    # Use environment variable for secret key in production
+    app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'asdf#FGSgvasgf$5$WGT')
+
+    # Enable CORS for all routes
+    CORS(app)
+
+    # Register blueprints if not already registered
+    blueprints = [
+        (user_bp, 'user'),
+        (opportunities_bp, 'opportunities'),
+        (scraping_bp, 'scraping'),
+        (rfp_enhanced_bp, 'rfp_enhanced'),
+        (perplexity_bp, 'perplexity'),
+        (trend_bp, 'trend_analysis'),
+        (cost_bp, 'cost_tracking'),
+    ]
+
+    # Optional blueprints disabled for production stability
+    # fast_fail_bp, win_probability_bp, compliance_bp are set to None above
+
+    for blueprint, name in blueprints:
+        if blueprint and blueprint.name not in app.blueprints:
+            try:
+                app.register_blueprint(blueprint, url_prefix='/api')
+                print(f"✅ {name} blueprint registered successfully")
+            except Exception as e:
+                print(f"❌ {name} blueprint registration failed: {e}")
+        elif not blueprint:
+            print(f"⚠️ {name} blueprint skipped (import failed)")
+
+    # Database configuration - support both PostgreSQL (Supabase) and SQLite
+    database_url = os.getenv('DATABASE_URL', 'sqlite:///opportunities.db')
+    if database_url.startswith('postgres://'):
+        database_url = database_url.replace('postgres://', 'postgresql://', 1)
+
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+    db.init_app(app)
+
+    try:
+        with app.app_context():
+            from sqlalchemy import text
+            db.session.execute(text('SELECT 1'))
+            db.create_all()
+            print(f"✅ Database connected successfully: {database_url[:50]}...")
+    except Exception as e:
+        print(f"❌ Database connection failed: {e}")
+        print(f"🔧 DATABASE_URL: {database_url[:50]}...")
+        print("⚠️  App will start but database operations may fail")
+
+    _configured = True
+    return app
 
 @app.after_request
 def after_request(response):
@@ -707,5 +763,7 @@ def health_check():
             'error': str(e)
         }), 500
 
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5002, debug=False)
+    # Create a fresh app instance and run the development server
+    create_app().run(host='0.0.0.0', port=5002, debug=False)

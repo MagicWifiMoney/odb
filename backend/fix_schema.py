@@ -7,7 +7,8 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from src.models.opportunity import db
-from src.main import app
+from src.main import create_app
+app = create_app()
 from sqlalchemy import text
 
 def migrate_schema():

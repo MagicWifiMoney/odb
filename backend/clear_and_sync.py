@@ -11,7 +11,8 @@ from dotenv import load_dotenv
 # Add the backend directory to the path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from src.main import app
+from src.main import create_app
+app = create_app()
 from src.database import db
 from src.models.opportunity import Opportunity, DataSource, SyncLog
 from src.services.data_sync_service import DataSyncService
