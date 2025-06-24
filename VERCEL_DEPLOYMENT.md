@@ -5,9 +5,19 @@
 ### 1. Connect to Vercel
 1. Go to [vercel.com](https://vercel.com) and sign in with GitHub
 2. Click "New Project" and import your GitHub repository
-3. Vercel will auto-detect the configuration from `vercel.json`
+3. **IMPORTANT: Set Root Directory to `frontend`** in the project configuration
+4. Vercel will auto-detect the configuration from `vercel.json`
 
-### 2. Configure Environment Variables
+### 2. Configure Root Directory (CRITICAL STEP)
+In your Vercel project settings:
+- Go to **Settings** > **General**
+- Find **Root Directory** setting
+- Set it to: `frontend`
+- Click **Save**
+
+This tells Vercel to treat the frontend folder as the project root.
+
+### 3. Configure Environment Variables
 In your Vercel project dashboard, go to Settings > Environment Variables and add:
 
 ```bash

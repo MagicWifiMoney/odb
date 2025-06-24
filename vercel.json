@@ -1,9 +1,8 @@
 {
   "framework": "vite",
-  "rootDirectory": "frontend",
-  "buildCommand": "npm install --legacy-peer-deps && npm run build",
-  "outputDirectory": "dist",
-  "installCommand": "npm install --legacy-peer-deps",
+  "buildCommand": "cd frontend && npm install --legacy-peer-deps && npm run build",
+  "outputDirectory": "frontend/dist",
+  "installCommand": "echo 'Skipping root install'",
   "rewrites": [
     {
       "source": "/(.*)",
