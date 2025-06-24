@@ -3,7 +3,47 @@ from datetime import datetime, timedelta
 import os
 import sys
 import logging
-from fastapi import APIRouter, HTTPException, Query, BackgroundTasks
+
+logger = logging.getLogger(__name__)
+
+try:
+    from fastapi import APIRouter, HTTPException, Query, BackgroundTasks
+    FASTAPI_AVAILABLE = True
+except ImportError:  # pragma: no cover - fallback for environments without FastAPI
+    FASTAPI_AVAILABLE = False
+    logger.warning("FastAPI not available - FastAPI features disabled")
+
+    class APIRouter:
+        """Minimal fallback APIRouter"""
+
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def post(self, *args, **kwargs):
+            def decorator(func):
+                return func
+
+            return decorator
+
+        def get(self, *args, **kwargs):
+            def decorator(func):
+                return func
+
+            return decorator
+
+    class HTTPException(Exception):
+        def __init__(self, status_code: int, detail: str = ""):
+            super().__init__(detail)
+            self.status_code = status_code
+            self.detail = detail
+
+    def Query(default=None, *args, **kwargs):
+        return default
+
+    class BackgroundTasks:
+        def add_task(self, func, *args, **kwargs):
+            func(*args, **kwargs)
+
 from pydantic import BaseModel, Field
 from typing import List, Dict, Optional, Any
 
@@ -32,7 +72,6 @@ def require_auth(request):
     return {"user_id": "demo_user"}
 
 perplexity_bp = Blueprint('perplexity', __name__)
-logger = logging.getLogger(__name__)
 
 # Import cost tracking service
 try:
