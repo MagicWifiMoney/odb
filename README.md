@@ -263,6 +263,14 @@ cd backend
 python -m pytest test_*.py -v
 ```
 
+### **Running the Test Suite**
+Run all unit tests from the repository root:
+
+```bash
+pip install -r requirements.txt
+pytest
+```
+
 ### **Frontend Tests**
 ```bash
 cd frontend
