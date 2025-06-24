@@ -1,0 +1,16 @@
+{
+  "name": "odb-vercel",
+  "version": "1.0.0",
+  "description": "Opportunity Dashboard with Vercel deployment",
+  "main": "index.js",
+  "scripts": {
+    "build": "cd frontend && npm install --legacy-peer-deps && npm run build",
+    "dev": "cd frontend && npm run dev",
+    "start": "cd frontend && npm run preview"
+  },
+  "engines": {
+    "node": "18.x"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}
