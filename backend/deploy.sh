@@ -44,7 +44,7 @@ DATABASE_URL=your_database_url_here
 SUPABASE_URL=your_supabase_url_here
 SUPABASE_KEY=your_supabase_key_here
 
-# Redis Configuration  
+# Redis Configuration
 REDIS_URL=redis://redis:6379
 
 # API Keys
@@ -169,14 +169,14 @@ print_info "Expected cost reduction: 70-80% from combined frontend + backend opt
 if [ "$3" = "--test" ]; then
     print_info "Running smoke tests..."
     echo "Testing API endpoints..."
-    
+
     # Test opportunities endpoint
     if curl -s "http://localhost:5001/api/opportunities?limit=1" | jq -e '.opportunities' > /dev/null; then
         print_status "Opportunities API test passed"
     else
         print_warning "Opportunities API test failed"
     fi
-    
+
     # Test cache functionality
     cache_stats=$(curl -s http://localhost:5001/api/performance/cache-stats | jq -r '.status')
     if [ "$cache_stats" = "success" ]; then
@@ -184,4 +184,4 @@ if [ "$3" = "--test" ]; then
     else
         print_warning "Cache system test failed"
     fi
-fi 
+fi
