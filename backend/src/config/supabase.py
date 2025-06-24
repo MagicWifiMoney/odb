@@ -2,8 +2,11 @@
 Supabase configuration and client setup for Opportunity Dashboard
 """
 import os
+import logging
 from supabase import create_client, Client
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 class SupabaseConfig:
     def __init__(self):
@@ -37,7 +40,7 @@ class SupabaseConfig:
             response = self.client.table('data_sources').select('id').limit(1).execute()
             return True
         except Exception as e:
-            print(f"Supabase connection test failed: {e}")
+            logger.error("Supabase connection test failed: %s", e)
             return False
 
 # Global instance
