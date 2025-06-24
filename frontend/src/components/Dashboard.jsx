@@ -34,6 +34,8 @@ import IntelligenceDashboard from './IntelligenceDashboard'
 // import { analytics, trackDashboardLoad, trackDataSync } from '../lib/analytics'
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8']
+// Allow adjusting how many opportunities to load via Vite env var
+const DASHBOARD_LIMIT = parseInt(import.meta.env.VITE_DASHBOARD_LIMIT) || 200
 
 export default function Dashboard() {
   const [stats, setStats] = useState(null)
@@ -64,7 +66,8 @@ export default function Dashboard() {
         .from('opportunities')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(20)
+        // Fetch a larger set (default 200) for browsing historical records
+        .limit(DASHBOARD_LIMIT)
 
       if (oppError) throw oppError
       
