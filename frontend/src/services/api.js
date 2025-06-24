@@ -3,9 +3,7 @@
  * Centralized service for calling our intelligence backend APIs
  */
 
-const API_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://api.rfptracking.com' 
-  : 'http://localhost:5002'
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
 
 class APIError extends Error {
   constructor(message, status, data) {

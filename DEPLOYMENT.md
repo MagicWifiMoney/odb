@@ -42,7 +42,7 @@ cp .env.local.template .env.local
 
 Edit `frontend/.env.local`:
 ```bash
-VITE_API_BASE_URL=http://localhost:5000/api
+VITE_API_URL=http://localhost:5000
 VITE_SUPABASE_URL=https://zkdrpchjejelgsuuffli.supabase.co
 VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
@@ -89,7 +89,7 @@ npm run dev
    FIRECRAWL_API_KEY=fc-3613f533df0e42d09306650f54b2f00c
    SECRET_KEY=your-production-secret-key
    FLASK_ENV=production
-   PORT=5001
+   PORT=5000
    ```
 
 3. **Deploy**
@@ -106,7 +106,7 @@ npm run dev
 
 2. **Set Environment Variables in Vercel**
    ```bash
-   VITE_API_BASE_URL=https://your-railway-app.up.railway.app/api
+   VITE_API_URL=https://your-railway-app.up.railway.app
    VITE_SUPABASE_URL=https://zkdrpchjejelgsuuffli.supabase.co
    VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
    ```
@@ -163,7 +163,7 @@ python setup_supabase.py
 
 **CORS Issues**
 - Backend enables CORS for all origins
-- Verify frontend URL in VITE_API_BASE_URL
+- Verify frontend URL in VITE_API_URL
 
 ### Health Checks
 

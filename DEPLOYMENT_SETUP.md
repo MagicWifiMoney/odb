@@ -38,7 +38,7 @@ Your API keys and Supabase configuration have been prepared for production deplo
 
 3. **Update the backend API URL:**
    - Edit the `VITE_API_URL` in `frontend/.env`
-   - Replace `https://your-backend-domain.com/api` with your actual backend URL
+   - Replace `https://your-backend-domain.com` with your actual backend URL
 
 ### 🔍 Step 3: Verify Configuration
 
@@ -122,7 +122,7 @@ For production deployment on platforms like Railway, Heroku, or Vercel:
 
 2. **Update the frontend API URL:**
    - Set `VITE_API_URL` to your deployed backend URL
-   - Example: `VITE_API_URL=https://your-app.railway.app/api`
+   - Example: `VITE_API_URL=https://your-app.railway.app`
 
 ## 📊 Your Configuration Summary
 
@@ -194,7 +194,7 @@ Once your environment is configured:
    ```
 
 3. **Access your dashboard:**
-   - Backend API: `http://localhost:5001/api/health`
+   - Backend API: `http://localhost:5000/api/health`
    - Frontend: `http://localhost:5173`
 
 Your Opportunity Dashboard is now configured for production deployment! 🎉 
