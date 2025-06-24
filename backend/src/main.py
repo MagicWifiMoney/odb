@@ -7,10 +7,22 @@ Clean, simple Flask app with proper CORS and working Perplexity integration
 import os
 import requests
 import sqlite3
+import sys
 from datetime import datetime
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from dotenv import load_dotenv
+
+# Add parent directory to path for imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+
+# Import advanced Perplexity functionality
+try:
+    from perplexity_live_discovery import PerplexityLiveDiscovery
+    PERPLEXITY_ADVANCED_AVAILABLE = True
+except ImportError as e:
+    print(f"⚠️  Advanced Perplexity features not available: {e}")
+    PERPLEXITY_ADVANCED_AVAILABLE = False
 
 # Load environment variables
 load_dotenv()
@@ -365,6 +377,211 @@ def perplexity_trend_analysis():
         'message': 'Use /api/perplexity/search with trend analysis queries',
         'service': 'perplexity'
     })
+
+# ============================================================================
+# ADVANCED PERPLEXITY AI ENDPOINTS
+# ============================================================================
+
+@app.route('/api/perplexity/enrich-opportunity', methods=['POST'])
+def enrich_opportunity():
+    """Enrich opportunity data with AI analysis"""
+    if not PERPLEXITY_ADVANCED_AVAILABLE:
+        return jsonify({
+            'error': 'Advanced Perplexity features not available',
+            'message': 'PerplexityLiveDiscovery module not found'
+        }), 503
+    
+    try:
+        data = request.get_json()
+        opportunity = data.get('opportunity', {})
+        
+        if not opportunity:
+            return jsonify({'error': 'Opportunity data is required'}), 400
+        
+        # Initialize Perplexity client
+        perplexity_client = PerplexityLiveDiscovery()
+        
+        # Enrich the opportunity
+        enriched = perplexity_client.enrich_opportunity(opportunity)
+        
+        return jsonify({
+            'status': 'success',
+            'enriched_opportunity': enriched,
+            'timestamp': datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'error': f'Enrichment failed: {str(e)}',
+            'status': 'error'
+        }), 500
+
+@app.route('/api/perplexity/score-opportunity', methods=['POST'])
+def score_opportunity():
+    """Score opportunity with AI analysis"""
+    if not PERPLEXITY_ADVANCED_AVAILABLE:
+        return jsonify({
+            'error': 'Advanced Perplexity features not available',
+            'message': 'PerplexityLiveDiscovery module not found'
+        }), 503
+    
+    try:
+        data = request.get_json()
+        opportunity = data.get('opportunity', {})
+        user_profile = data.get('user_profile', {})
+        
+        if not opportunity:
+            return jsonify({'error': 'Opportunity data is required'}), 400
+        
+        # Initialize Perplexity client
+        perplexity_client = PerplexityLiveDiscovery()
+        
+        # Score the opportunity
+        scoring_result = perplexity_client.score_opportunity_with_ai(opportunity, user_profile)
+        
+        return jsonify({
+            'status': 'success',
+            'scoring_result': scoring_result,
+            'timestamp': datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'error': f'Scoring failed: {str(e)}',
+            'status': 'error'
+        }), 500
+
+@app.route('/api/perplexity/competitive-landscape', methods=['POST'])
+def analyze_competitive_landscape():
+    """Analyze competitive landscape"""
+    if not PERPLEXITY_ADVANCED_AVAILABLE:
+        return jsonify({
+            'error': 'Advanced Perplexity features not available',
+            'message': 'PerplexityLiveDiscovery module not found'
+        }), 503
+    
+    try:
+        data = request.get_json()
+        naics_codes = data.get('naics_codes', [])
+        agency = data.get('agency', '')
+        timeframe = data.get('timeframe', '2years')
+        
+        if not naics_codes or not agency:
+            return jsonify({'error': 'NAICS codes and agency are required'}), 400
+        
+        # Initialize Perplexity client
+        perplexity_client = PerplexityLiveDiscovery()
+        
+        # Analyze competitive landscape
+        analysis = perplexity_client.analyze_competitive_landscape(naics_codes, agency, timeframe)
+        
+        return jsonify({
+            'status': 'success',
+            'competitive_analysis': analysis,
+            'timestamp': datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'error': f'Competitive analysis failed: {str(e)}',
+            'status': 'error'
+        }), 500
+
+@app.route('/api/perplexity/smart-alerts', methods=['POST'])
+def generate_smart_alerts():
+    """Generate smart alerts based on user profile"""
+    if not PERPLEXITY_ADVANCED_AVAILABLE:
+        return jsonify({
+            'error': 'Advanced Perplexity features not available',
+            'message': 'PerplexityLiveDiscovery module not found'
+        }), 503
+    
+    try:
+        data = request.get_json() or {}
+        user_profile = data.get('user_profile', {})
+        
+        # Initialize Perplexity client
+        perplexity_client = PerplexityLiveDiscovery()
+        
+        # Generate smart alerts
+        alerts = perplexity_client.generate_smart_alerts(user_profile)
+        
+        return jsonify({
+            'status': 'success',
+            'smart_alerts': alerts,
+            'timestamp': datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'error': f'Smart alerts generation failed: {str(e)}',
+            'status': 'error'
+        }), 500
+
+@app.route('/api/perplexity/market-forecast', methods=['POST'])
+def forecast_market_conditions():
+    """Forecast market conditions"""
+    if not PERPLEXITY_ADVANCED_AVAILABLE:
+        return jsonify({
+            'error': 'Advanced Perplexity features not available',
+            'message': 'PerplexityLiveDiscovery module not found'
+        }), 503
+    
+    try:
+        data = request.get_json() or {}
+        horizon = data.get('horizon', '12months')
+        
+        # Initialize Perplexity client
+        perplexity_client = PerplexityLiveDiscovery()
+        
+        # Generate market forecast
+        forecast = perplexity_client.forecast_market_conditions(horizon)
+        
+        return jsonify({
+            'status': 'success',
+            'market_forecast': forecast,
+            'timestamp': datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'error': f'Market forecast failed: {str(e)}',
+            'status': 'error'
+        }), 500
+
+@app.route('/api/perplexity/compliance-analysis', methods=['POST'])
+def analyze_compliance():
+    """Analyze compliance requirements for opportunity"""
+    if not PERPLEXITY_ADVANCED_AVAILABLE:
+        return jsonify({
+            'error': 'Advanced Perplexity features not available',
+            'message': 'PerplexityLiveDiscovery module not found'
+        }), 503
+    
+    try:
+        data = request.get_json()
+        opportunity = data.get('opportunity', {})
+        
+        if not opportunity:
+            return jsonify({'error': 'Opportunity data is required'}), 400
+        
+        # Initialize Perplexity client
+        perplexity_client = PerplexityLiveDiscovery()
+        
+        # Analyze compliance requirements
+        compliance_analysis = perplexity_client.analyze_compliance_requirements(opportunity)
+        
+        return jsonify({
+            'status': 'success',
+            'compliance_analysis': compliance_analysis,
+            'timestamp': datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'error': f'Compliance analysis failed: {str(e)}',
+            'status': 'error'
+        }), 500
 
 # ============================================================================
 # MOCK ENDPOINTS - FOR BROKEN SERVICES
