@@ -1,0 +1,43 @@
+# =============================================================================
+# OPPORTUNITY DASHBOARD - FRONTEND PRODUCTION ENVIRONMENT
+# =============================================================================
+# Project: opportunity-dashboard
+# Supabase Username: MagicWifiMoney
+# 
+# INSTRUCTIONS: Copy this content to frontend/.env for deployment
+# =============================================================================
+
+# =============================================================================
+# API CONFIGURATION
+# =============================================================================
+# Backend API URL (update with your actual backend domain)
+VITE_API_URL=https://your-backend-domain.com/api
+
+# For local development, you can use:
+# VITE_API_URL=http://localhost:5001/api
+
+# =============================================================================
+# SUPABASE CONFIGURATION (Frontend)
+# =============================================================================
+# Supabase project: opportunity-dashboard
+# Project reference: zkdrpchjejelgsuuffli
+VITE_SUPABASE_URL=https://zkdrpchjejelgsuuffli.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InprZHJwY2hqZWplbGdzdXVmZmxpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAyMjY4MTMsImV4cCI6MjA2NTgwMjgxM30.xBBArkhXeFT26BmVI-WNag0qa0hHGdFUmxmlcTi4CGg
+
+# =============================================================================
+# ENVIRONMENT CONFIGURATION
+# =============================================================================
+VITE_ENVIRONMENT=production
+
+# =============================================================================
+# OPTIONAL: ANALYTICS & MONITORING
+# =============================================================================
+# PostHog Analytics (if using)
+# VITE_POSTHOG_KEY=your_posthog_key_here
+# VITE_POSTHOG_HOST=https://us.i.posthog.com
+
+# =============================================================================
+# OPTIONAL: FEATURE FLAGS
+# =============================================================================
+# VITE_ENABLE_DEBUG=false
+# VITE_ENABLE_ANALYTICS=true 
