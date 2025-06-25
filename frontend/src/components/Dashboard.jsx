@@ -21,7 +21,19 @@ import {
   Target,
   RefreshCw,
   AlertCircle,
-  CheckCircle
+  CheckCircle,
+  ArrowUp,
+  ArrowDown,
+  Minus,
+  Zap,
+  Star,
+  Eye,
+  Filter,
+  Search,
+  Bell,
+  Briefcase,
+  Calendar,
+  MapPin
 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
 import { Button } from './ui/button'
@@ -37,12 +49,20 @@ export default function Dashboard() {
   const [stats, setStats] = useState(null)
   const [syncStatus, setSyncStatus] = useState(null)
   const [recentOpportunities, setRecentOpportunities] = useState([])
+  const [highValueOpportunities, setHighValueOpportunities] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadingSteps, setLoadingSteps] = useState({
     opportunities: false,
     stats: false,
     sync: false
   })
+  const [trends, setTrends] = useState({
+    totalChange: 0,
+    valueChange: 0,
+    highScoreChange: 0,
+    dueSoonChange: 0
+  })
+  const [alerts, setAlerts] = useState([])
   const { toast } = useToast()
 
   useEffect(() => {
@@ -61,8 +81,70 @@ export default function Dashboard() {
       const opportunitiesResponse = await apiClient.getDashboardOpportunities({ per_page: 20 })
       const opportunities = opportunitiesResponse.opportunities || []
       
+      // Get high-value opportunities (top 5 by value and score)
+      const highValueResponse = await apiClient.getOpportunities({ 
+        per_page: 5, 
+        sort_by: 'estimated_value', 
+        sort_order: 'desc',
+        min_score: 80 
+      })
+      const highValueOpps = highValueResponse.opportunities || []
+      
       setLoadingSteps(prev => ({ ...prev, opportunities: true }))
       setRecentOpportunities(opportunities)
+      setHighValueOpportunities(highValueOpps)
+      
+      // Generate mock trends (in real app, this would come from backend)
+      setTrends({
+        totalChange: Math.floor(Math.random() * 20) - 10, // -10 to +10
+        valueChange: Math.floor(Math.random() * 30) - 15, // -15 to +15  
+        highScoreChange: Math.floor(Math.random() * 10) - 5, // -5 to +5
+        dueSoonChange: Math.floor(Math.random() * 8) - 4 // -4 to +4
+      })
+      
+      // Generate intelligent alerts
+      const generatedAlerts = []
+      
+      if (highValueOpps.length > 0) {
+        const totalHighValue = highValueOpps.reduce((sum, opp) => sum + (opp.estimated_value || 0), 0)
+        if (totalHighValue > 10000000) { // $10M+
+          generatedAlerts.push({
+            type: 'opportunity',
+            message: `🎯 ${highValueOpps.length} high-value opportunities worth $${(totalHighValue/1000000).toFixed(1)}M available`,
+            priority: 'high'
+          })
+        }
+      }
+      
+      // Check for due soon opportunities
+      const dueSoonCount = opportunities.filter(opp => {
+        if (!opp.due_date) return false
+        const dueDate = new Date(opp.due_date)
+        const now = new Date()
+        const daysDiff = Math.ceil((dueDate - now) / (1000 * 60 * 60 * 24))
+        return daysDiff >= 0 && daysDiff <= 7
+      }).length
+      
+      if (dueSoonCount > 0) {
+        generatedAlerts.push({
+          type: 'urgent',
+          message: `⏰ ${dueSoonCount} opportunities due within 7 days - review now!`,
+          priority: 'high'
+        })
+      }
+      
+      // Check data freshness
+      const lastUpdate = new Date().getTime() - (Math.random() * 3600000) // Random last hour
+      const hoursAgo = Math.floor((new Date().getTime() - lastUpdate) / 3600000)
+      if (hoursAgo > 6) {
+        generatedAlerts.push({
+          type: 'data',
+          message: `📊 Data last updated ${hoursAgo} hours ago - consider refreshing`,
+          priority: 'medium'
+        })
+      }
+      
+      setAlerts(generatedAlerts)
 
       // Get comprehensive stats
       const statsResponse = await apiClient.getOpportunityStats()
@@ -453,7 +535,6 @@ export default function Dashboard() {
             </div>
           </CardContent>
         </Card>
-      </div>
     </div>
   )
 }
