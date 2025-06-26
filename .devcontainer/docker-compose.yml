@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  # Development backend with code mounted for live reload
+  backend:
+    build: ../backend
+    container_name: odb-dev-backend
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=development
+      - DATABASE_URL=sqlite:///instance/opportunities.db
+      - SECRET_KEY=dev-secret-key
+      - REDIS_URL=redis://redis:6379
+    volumes:
+      - ../backend:/app
+      - ../backend/instance:/app/instance
+    depends_on:
+      - redis
+    networks:
+      - odb_network
+    command: python -m flask run --host=0.0.0.0 --port=5000 --debug
+
+  # Development frontend with hot reload
+  frontend-dev:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile.dev
+    container_name: odb-dev-frontend
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_BASE_URL=http://localhost:5000
+    volumes:
+      - ../frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - odb_network
+
+  # Redis for caching
+  redis:
+    image: redis:7.2-alpine
+    container_name: odb-dev-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - odb_network
+
+  # Redis UI for development
+  redis-ui:
+    image: rediscommander/redis-commander:latest
+    container_name: odb-dev-redis-ui
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+      - HTTP_USER=admin
+      - HTTP_PASSWORD=admin123
+    depends_on:
+      - redis
+    networks:
+      - odb_network
+
+volumes:
+  redis_data:
+    driver: local
+
+networks:
+  odb_network:
+    driver: bridge

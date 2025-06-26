@@ -1,1172 +1,854 @@
-import { useState, useEffect } from 'react'
-import { Zap, Brain, TrendingUp, DollarSign, Search, RefreshCw, AlertCircle, CheckCircle, ExternalLink, Target, Users, AlertTriangle } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { Brain, TrendingUp, Target, Users, Zap, Search, Loader2, FileText, Calendar, Award, RefreshCw } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { apiClient } from '@/lib/api'
-import { useToast } from '@/hooks/use-toast'
-import SmartAlerts from '@/components/SmartAlerts'
-import ContextAwareSearch from '@/components/ContextAwareSearch'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { useToast } from '../hooks/use-toast'
+import { apiClient } from '../lib/api'
 
 export default function PerplexityPage() {
+  // Market Intelligence Search
   const [searchQuery, setSearchQuery] = useState('')
-  const [results, setResults] = useState([])
-  const [marketAnalysis, setMarketAnalysis] = useState(null)
-  const [trendAnalysis, setTrendAnalysis] = useState(null)
-  const [marketForecast, setMarketForecast] = useState(null)
-  const [financialInsights, setFinancialInsights] = useState([])
+  const [searchResult, setSearchResult] = useState(null)
   const [loading, setLoading] = useState(false)
-  const [activeTab, setActiveTab] = useState('search')
-  const [searchHistory, setSearchHistory] = useState([])
-  const [userContext, setUserContext] = useState({
-    industry: 'Government Technology',
-    company: 'Federal Contractor',
-    focus_areas: ['AI/ML', 'Cybersecurity', 'Cloud Services']
-  })
+  
+  // Real Opportunities Data
+  const [opportunities, setOpportunities] = useState([])
+  const [selectedOpportunityId, setSelectedOpportunityId] = useState('')
+  const [selectedOpportunityObj, setSelectedOpportunityObj] = useState(null)
+  const [loadingOpportunities, setLoadingOpportunities] = useState(false)
+  const [opportunitySearch, setOpportunitySearch] = useState('')
+  
+  // Opportunity Analysis
+  const [enrichmentResult, setEnrichmentResult] = useState(null)
+  const [scoringResult, setScoringResult] = useState(null)
+  const [loadingAnalysis, setLoadingAnalysis] = useState(false)
+  
+  // Competitive Analysis
+  const [naicsCodes, setNaicsCodes] = useState('')
+  const [agency, setAgency] = useState('')
+  const [timeframe, setTimeframe] = useState('2years')
+  const [competitiveResult, setCompetitiveResult] = useState(null)
+  const [loadingCompetitive, setLoadingCompetitive] = useState(false)
+  
+  // Smart Alerts & Forecasting
+  const [userProfile, setUserProfile] = useState({ industry: '', company_size: '', focus: '' })
+  const [alertsResult, setAlertsResult] = useState(null)
+  const [forecastResult, setForecastResult] = useState(null)
+  const [forecastHorizon, setForecastHorizon] = useState('12months')
+  const [loadingAlerts, setLoadingAlerts] = useState(false)
+  const [loadingForecast, setLoadingForecast] = useState(false)
+  
+  // Compliance Analysis
+  const [complianceOpportunity, setComplianceOpportunity] = useState('')
+  const [complianceResult, setComplianceResult] = useState(null)
+  const [loadingCompliance, setLoadingCompliance] = useState(false)
+  
   const { toast } = useToast()
 
-  // Auto-load market analysis on component mount
-  useEffect(() => {
-    loadMarketAnalysis()
-    loadTrendAnalysis()
-    // Load search history from localStorage
-    const savedHistory = localStorage.getItem('perplexity_search_history')
-    if (savedHistory) {
-      try {
-        setSearchHistory(JSON.parse(savedHistory))
-      } catch (error) {
-        console.error('Failed to load search history:', error)
+  // Fetch real opportunities data
+  const fetchOpportunities = async () => {
+    setLoadingOpportunities(true)
+    try {
+      const params = { per_page: 100 }
+      if (opportunitySearch.trim()) {
+        params.search = opportunitySearch
       }
+      
+      const result = await apiClient.getOpportunities(params)
+      setOpportunities(result.opportunities || [])
+    } catch (error) {
+      console.error('Failed to fetch opportunities:', error)
+      toast({
+        title: "Error",
+        description: "Failed to load opportunities",
+        variant: "destructive",
+      })
+    } finally {
+      setLoadingOpportunities(false)
     }
+  }
+
+  // Handle opportunity selection
+  const handleOpportunitySelect = async (opportunityId) => {
+    setSelectedOpportunityId(opportunityId)
+    
+    if (opportunityId) {
+      try {
+        const opportunity = opportunities.find(opp => opp.id.toString() === opportunityId)
+        setSelectedOpportunityObj(opportunity)
+      } catch (error) {
+        console.error('Failed to set selected opportunity:', error)
+      }
+    } else {
+      setSelectedOpportunityObj(null)
+    }
+  }
+
+  // Load opportunities on component mount
+  useEffect(() => {
+    fetchOpportunities()
   }, [])
 
-  const handleContextAwareSearch = async (query) => {
-    if (!query?.trim()) {
+  // Refresh opportunities when search changes (debounced)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (opportunitySearch !== '') {
+        fetchOpportunities()
+      }
+    }, 500)
+    
+    return () => clearTimeout(timer)
+  }, [opportunitySearch])
+
+  // Market Intelligence Search
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) {
       toast({
-        title: "Search Required",
-        description: "Please enter a query",
+        title: "Error",
+        description: "Please enter a search query",
         variant: "destructive",
       })
       return
     }
 
+    setLoading(true)
     try {
-      setLoading(true)
-      setSearchQuery(query)
-      
-      // Add to search history
-      const newSearch = {
-        query,
-        timestamp: Date.now(),
-        category: 'Financial Intelligence'
-      }
-      const updatedHistory = [newSearch, ...searchHistory.slice(0, 49)]
-      setSearchHistory(updatedHistory)
-      localStorage.setItem('perplexity_search_history', JSON.stringify(updatedHistory))
-      
-      const response = await apiClient.searchFinancialData(query)
-      
-      if (response.success && response.data) {
-        const searchResult = {
-          id: Date.now(),
-          title: `Financial Analysis: ${query}`,
-          description: response.data.analysis,
-          source_url: '',
-          relevance_score: 95,
-          ai_confidence: 90,
-          citations: response.data.citations || []
-        }
-        setResults([searchResult])
-        
-        toast({
-          title: "Search Complete",
-          description: "Financial analysis generated successfully",
-        })
-      } else {
-        const response = await simulatePerplexitySearch(query)
-        setResults(response.results || [])
-        
-        toast({
-          title: "Search Complete (Demo Mode)",
-          description: `Found ${response.results?.length || 0} financial insights`,
-        })
-      }
+      const result = await apiClient.searchFinancialData(searchQuery)
+      setSearchResult(result)
+      toast({
+        title: "Analysis Complete",
+        description: "AI market intelligence generated successfully",
+      })
     } catch (error) {
-      console.error('Financial search failed:', error)
-      
-      try {
-        const response = await simulatePerplexitySearch(query)
-        setResults(response.results || [])
-        
-        toast({
-          title: "Search Complete (Demo Mode)",
-          description: "Using simulated data - check API configuration",
-          variant: "default",
-        })
-      } catch {
-        toast({
-          title: "Search Failed",
-          description: error.message || "Failed to search financial data",
-          variant: "destructive",
-        })
-      }
+      console.error('Search failed:', error)
+      toast({
+        title: "Search Failed",
+        description: error.message || "Failed to generate analysis",
+        variant: "destructive",
+      })
     } finally {
       setLoading(false)
     }
   }
 
-  const handleTemplateSearch = async (templateData) => {
-    const { query, template, params } = templateData
-    
-    toast({
-      title: "Template Query Executed",
-      description: `Using ${template.name} template`,
-    })
-    
-    // Execute the search with the template-generated query
-    await handleContextAwareSearch(query)
-  }
-
-  const loadMarketAnalysis = async () => {
-    try {
-      const response = await apiClient.getMarketAnalysis()
-      
-      if (response.success && response.data) {
-        // Transform API response to UI format
-        const analysis = {
-          summary: response.data.analysis,
-          key_trends: [
-            "Real-time AI-powered market insights",
-            "Government contracting trend analysis",
-            "Financial data from live sources",
-            "Market forecasting and predictions"
-          ],
-          hot_sectors: [
-            { name: "AI/ML Contracts", growth: "+45%", value: "$2.3B" },
-            { name: "Cybersecurity", growth: "+32%", value: "$4.1B" },
-            { name: "Cloud Services", growth: "+28%", value: "$3.8B" },
-            { name: "Data Analytics", growth: "+38%", value: "$1.9B" }
-          ],
-          generated_at: response.data.generated_at
-        }
-        setMarketAnalysis(analysis)
-      } else {
-        // Fall back to simulation
-        const analysis = await simulateMarketAnalysis()
-        setMarketAnalysis(analysis)
-      }
-    } catch (error) {
-      console.error('Failed to load market analysis:', error)
-      // Fall back to simulation on error
-      try {
-        const analysis = await simulateMarketAnalysis()
-        setMarketAnalysis(analysis)
-      } catch (simError) {
-        console.error('Failed to load simulated analysis:', simError)
-      }
+  // Opportunity Enrichment
+  const handleEnrichOpportunity = async () => {
+    if (!selectedOpportunityObj) {
+      toast({
+        title: "Error",
+        description: "Please select an opportunity to analyze",
+        variant: "destructive",
+      })
+      return
     }
-  }
 
-  const refreshFinancialData = async () => {
+    setLoadingAnalysis(true)
     try {
-      setLoading(true)
-      
-      const response = await apiClient.getFinancialMetrics()
-      
-      if (response.success && response.data) {
-        // Parse the metrics from AI response (would need more sophisticated parsing in real implementation)
-        const insights = [
-          {
-            metric: "Real-time Market Data",
-            current_value: "Live",
-            change: "+100%",
-            trend: "up",
-            description: "Financial metrics powered by Perplexity AI"
-          },
-          {
-            metric: "Data Freshness",
-            current_value: "Current",
-            change: "Real-time",
-            trend: "up",
-            description: "Up-to-date financial information"
-          }
-        ]
-        setFinancialInsights(insights)
-        
-        toast({
-          title: "Data Refreshed",
-          description: "Latest financial insights loaded from Perplexity",
-        })
-      } else {
-        // Fall back to simulation
-        const insights = await simulateFinancialInsights()
-        setFinancialInsights(insights)
-        
-        toast({
-          title: "Data Refreshed (Demo Mode)",
-          description: "Using simulated financial data",
-        })
-      }
+      const result = await apiClient.enrichOpportunity(selectedOpportunityObj)
+      setEnrichmentResult(result)
+      toast({
+        title: "Enrichment Complete",
+        description: "AI opportunity analysis generated successfully",
+      })
     } catch (error) {
-      console.error('Failed to refresh financial data:', error)
-      
-      // Fall back to simulation
-      try {
-        const insights = await simulateFinancialInsights()
-        setFinancialInsights(insights)
-        
-        toast({
-          title: "Data Refreshed (Demo Mode)",
-          description: "Using simulated data - check API configuration",
-        })
-      } catch {
-        toast({
-          title: "Refresh Failed",
-          description: "Could not load financial data",
-          variant: "destructive",
-        })
-      }
+      console.error('Enrichment failed:', error)
+      toast({
+        title: "Enrichment Failed",
+        description: error.message || "Failed to analyze opportunity",
+        variant: "destructive",
+      })
     } finally {
-      setLoading(false)
+      setLoadingAnalysis(false)
     }
   }
 
-  const loadTrendAnalysis = async () => {
+  // Opportunity Scoring
+  const handleScoreOpportunity = async () => {
+    if (!selectedOpportunityObj) {
+      toast({
+        title: "Error",
+        description: "Please select an opportunity to score",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setLoadingAnalysis(true)
     try {
-      const response = await apiClient.analyzeMarketTrends('6months', ['AI/ML', 'Cybersecurity', 'Cloud Services'])
-      
-      if (response.success && response.data) {
-        setTrendAnalysis(response.data)
-      } else {
-        // Fall back to simulation
-        const analysis = await simulateTrendAnalysis()
-        setTrendAnalysis(analysis)
-      }
+      const result = await apiClient.scoreOpportunity(selectedOpportunityObj, userProfile)
+      setScoringResult(result)
+      toast({
+        title: "Scoring Complete",
+        description: "AI opportunity scoring generated successfully",
+      })
     } catch (error) {
-      console.error('Failed to load trend analysis:', error)
-      // Fall back to simulation on error
-      try {
-        const analysis = await simulateTrendAnalysis()
-        setTrendAnalysis(analysis)
-      } catch (simError) {
-        console.error('Failed to load simulated trend analysis:', simError)
-      }
+      console.error('Scoring failed:', error)
+      toast({
+        title: "Scoring Failed",
+        description: error.message || "Failed to score opportunity",
+        variant: "destructive",
+      })
+    } finally {
+      setLoadingAnalysis(false)
     }
   }
 
-  const loadMarketForecast = async () => {
+  // Competitive Analysis
+  const handleCompetitiveAnalysis = async () => {
+    if (!naicsCodes.trim() || !agency.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter NAICS codes and agency",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setLoadingCompetitive(true)
     try {
-      const response = await apiClient.forecastMarketConditions('12months')
-      
-      if (response.success && response.data) {
-        setMarketForecast(response.data)
-        toast({
-          title: "Market Forecast Updated",
-          description: "12-month market predictions loaded",
-        })
-      } else {
-        // Fall back to simulation
-        const forecast = await simulateMarketForecast()
-        setMarketForecast(forecast)
-        
-        toast({
-          title: "Market Forecast Updated (Demo)",
-          description: "Using simulated forecast data",
-        })
-      }
+      const codes = naicsCodes.split(',').map(code => code.trim())
+      const result = await apiClient.analyzeCompetitiveLandscape(codes, agency, timeframe)
+      setCompetitiveResult(result)
+      toast({
+        title: "Analysis Complete",
+        description: "Competitive landscape analysis generated successfully",
+      })
     } catch (error) {
-      console.error('Failed to load market forecast:', error)
-      
-      // Fall back to simulation
-      try {
-        const forecast = await simulateMarketForecast()
-        setMarketForecast(forecast)
-        
-        toast({
-          title: "Market Forecast Updated (Demo)",
-          description: "Using simulated data - check API configuration",
-        })
-      } catch {
-        toast({
-          title: "Forecast Failed",
-          description: "Could not load market forecast",
-          variant: "destructive",
-        })
-      }
+      console.error('Competitive analysis failed:', error)
+      toast({
+        title: "Analysis Failed",
+        description: error.message || "Failed to analyze competitive landscape",
+        variant: "destructive",
+      })
+    } finally {
+      setLoadingCompetitive(false)
     }
   }
 
-  // Temporary simulation functions - to be replaced with real API calls
-  const simulatePerplexitySearch = async () => {
-    await new Promise(resolve => setTimeout(resolve, 2000)) // Simulate API delay
-    
-    return {
-      results: [
-        {
-          id: 1,
-          title: "Federal Reserve Interest Rate Analysis",
-          description: "Latest analysis of Federal Reserve interest rate decisions and their impact on government contracting markets",
-          source_url: "https://example.com/fed-analysis",
-          relevance_score: 95,
-          ai_confidence: 92,
-          citations: ["fed.gov", "reuters.com", "bloomberg.com"]
-        },
-        {
-          id: 2,
-          title: "Government Budget Allocation Trends",
-          description: "Q4 2024 analysis showing increased budget allocations for technology and infrastructure projects",
-          source_url: "https://example.com/budget-trends",
-          relevance_score: 88,
-          ai_confidence: 87,
-          citations: ["whitehouse.gov", "cbo.gov", "usaspending.gov"]
-        },
-        {
-          id: 3,
-          title: "Defense Contractor Market Outlook",
-          description: "Market analysis indicating growth opportunities in cybersecurity and AI defense contracts",
-          source_url: "https://example.com/defense-outlook",
-          relevance_score: 83,
-          ai_confidence: 85,
-          citations: ["defense.gov", "pentagon.mil", "defensenews.com"]
-        }
-      ]
+  // Smart Alerts
+  const handleGenerateAlerts = async () => {
+    setLoadingAlerts(true)
+    try {
+      const result = await apiClient.generateSmartAlerts(userProfile)
+      setAlertsResult(result)
+      toast({
+        title: "Alerts Generated",
+        description: "Smart alerts generated successfully",
+      })
+    } catch (error) {
+      console.error('Alerts generation failed:', error)
+      toast({
+        title: "Alerts Failed",
+        description: error.message || "Failed to generate smart alerts",
+        variant: "destructive",
+      })
+    } finally {
+      setLoadingAlerts(false)
     }
   }
 
-  const simulateMarketAnalysis = async () => {
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    return {
-      summary: "Current government contracting market shows strong growth in technology sectors, with increased focus on AI, cybersecurity, and cloud infrastructure. Federal agencies are prioritizing digital transformation initiatives.",
-      key_trends: [
-        "AI/ML contract values up 45% from last quarter",
-        "Cybersecurity spending increased across all agencies",
-        "Small business set-aside opportunities growing",
-        "Cloud migration projects dominating IT contracts"
-      ],
-      hot_sectors: [
-        { name: "Artificial Intelligence", growth: "+45%", value: "$2.3B" },
-        { name: "Cybersecurity", growth: "+32%", value: "$4.1B" },
-        { name: "Cloud Services", growth: "+28%", value: "$3.8B" },
-        { name: "Data Analytics", growth: "+38%", value: "$1.9B" }
-      ],
-      generated_at: new Date().toISOString()
+  // Market Forecasting
+  const handleMarketForecast = async () => {
+    setLoadingForecast(true)
+    try {
+      const result = await apiClient.forecastMarketConditions(forecastHorizon)
+      setForecastResult(result)
+      toast({
+        title: "Forecast Generated",
+        description: "Market forecast generated successfully",
+      })
+    } catch (error) {
+      console.error('Forecast failed:', error)
+      toast({
+        title: "Forecast Failed",
+        description: error.message || "Failed to generate market forecast",
+        variant: "destructive",
+      })
+    } finally {
+      setLoadingForecast(false)
     }
   }
 
-  const simulateFinancialInsights = async () => {
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    
-    return [
-      {
-        metric: "Average Contract Value",
-        current_value: "$2.8M",
-        change: "+12%",
-        trend: "up",
-        description: "Average federal contract values increased 12% this quarter"
-      },
-      {
-        metric: "Contract Awards (Monthly)",
-        current_value: "1,247",
-        change: "+8%",
-        trend: "up",
-        description: "Monthly contract awards show consistent growth"
-      },
-      {
-        metric: "Small Business Participation",
-        current_value: "28.5%",
-        change: "+3%",
-        trend: "up",
-        description: "Small business contract participation at all-time high"
-      },
-      {
-        metric: "Average Bid Competition",
-        current_value: "4.2 bidders",
-        change: "-5%",
-        trend: "down",
-        description: "Competition levels slightly decreased, indicating opportunities"
-      }
-    ]
-  }
-
-  const simulateTrendAnalysis = async () => {
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    
-    return {
-      trend_analysis: {
-        timeframe: '6months',
-        focus_areas: ['AI/ML', 'Cybersecurity', 'Cloud Services'],
-        spending_trends: {
-          budget_shifts: [
-            { category: 'AI/ML', change: '+45%', value: '$2.3B' },
-            { category: 'Cybersecurity', change: '+32%', value: '$4.1B' },
-            { category: 'Cloud Services', change: '+28%', value: '$3.8B' }
-          ],
-          emerging_priorities: [
-            'Zero Trust Architecture Implementation',
-            'AI-powered Data Analytics',
-            'Edge Computing Infrastructure',
-            'Quantum-resistant Cryptography'
-          ]
-        },
-        technology_trends: {
-          fastest_growing: [
-            { tech: 'Machine Learning Platforms', growth: '+67%' },
-            { tech: 'Cloud Security Tools', growth: '+54%' },
-            { tech: 'DevSecOps Solutions', growth: '+43%' }
-          ],
-          digital_transformation: 'Accelerating across all federal agencies with $15B allocated',
-          cloud_adoption: '78% of federal workloads now cloud-based, up from 45% last year'
-        },
-        market_dynamics: {
-          small_business_trends: 'Small business awards increased 23% with new set-aside goals',
-          competition_changes: 'Competition intensity decreased in specialized AI/ML contracts',
-          geographic_shifts: ['Increased remote work capabilities', 'Regional data center requirements']
-        },
-        market_forecast: {
-          growth_predictions: [
-            'AI/ML contracts expected to grow 50% in next 12 months',
-            'Cybersecurity spending to reach $8B by end of fiscal year',
-            'Cloud infrastructure investments doubling in civilian agencies'
-          ],
-          strategic_recommendations: [
-            'Invest in AI/ML certification and capabilities',
-            'Develop Zero Trust architecture expertise',
-            'Partner with cloud security specialists',
-            'Focus on small business set-aside opportunities'
-          ]
-        }
-      },
-      citations: ['usaspending.gov', 'sam.gov', 'gao.gov'],
-      analyzed_at: new Date().toISOString()
+  // Compliance Analysis
+  const handleComplianceAnalysis = async () => {
+    if (!complianceOpportunity.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter opportunity details",
+        variant: "destructive",
+      })
+      return
     }
-  }
 
-  const simulateMarketForecast = async () => {
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    
-    return {
-      market_forecast: {
-        forecast_horizon: '12months',
-        current_period: new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
-        market_conditions: {
-          growth_projections: '+15% overall government IT spending growth expected',
-          budget_outlook: 'Strong budget outlook with continued focus on modernization',
-          economic_factors: ['Inflation impact on pricing', 'Supply chain stabilization', 'Talent shortage challenges']
-        },
-        agency_predictions: {
-          defense_priorities: ['AI-enabled weapons systems', 'Cybersecurity mesh architecture', 'Cloud edge computing'],
-          civilian_plans: ['Digital service delivery', 'Data modernization', 'Customer experience platforms'],
-          infrastructure_spending: '$50B allocated for digital infrastructure over next 2 years'
-        },
-        technology_adoption: {
-          ai_ml_timeline: 'Full AI integration expected by Q4 2025 across major agencies',
-          cloud_migration: '90% cloud adoption target by end of 2025',
-          cybersecurity_priorities: ['Zero Trust implementation', 'Quantum-safe encryption', 'Supply chain security']
-        },
-        opportunity_pipeline: {
-          high_value_recompetes: [
-            { title: 'DHS Enterprise Infrastructure', value: '$15B', timeline: 'Q2 2025' },
-            { title: 'DoD Cloud Services', value: '$25B', timeline: 'Q3 2025' },
-            { title: 'VA Modernization Program', value: '$8B', timeline: 'Q1 2025' }
-          ],
-          new_programs: [
-            'Federal AI Excellence Centers',
-            'Quantum Computing Research Initiative',
-            'National Cyber Defense Platform'
-          ]
-        },
-        strategic_recommendations: {
-          positioning_strategies: [
-            'Develop AI/ML partnerships with academic institutions',
-            'Invest in security clearance programs for staff',
-            'Build multi-cloud expertise and certifications'
-          ],
-          capability_priorities: [
-            'AI/ML model development and deployment',
-            'Zero Trust architecture design',
-            'Quantum-safe cryptography implementation'
-          ]
-        }
-      },
-      citations: ['whitehouse.gov', 'cbo.gov', 'omb.gov'],
-      generated_at: new Date().toISOString()
+    setLoadingCompliance(true)
+    try {
+      const opportunity = JSON.parse(complianceOpportunity)
+      const result = await apiClient.analyzeCompliance(opportunity)
+      setComplianceResult(result)
+      toast({
+        title: "Analysis Complete",
+        description: "Compliance analysis generated successfully",
+      })
+    } catch (error) {
+      console.error('Compliance analysis failed:', error)
+      toast({
+        title: "Analysis Failed",
+        description: error.message || "Failed to analyze compliance requirements",
+        variant: "destructive",
+      })
+    } finally {
+      setLoadingCompliance(false)
     }
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold flex items-center">
-          <Zap className="w-8 h-8 mr-3 text-yellow-500" />
-          Perplexity Financial Intelligence
+    <div className="container mx-auto px-6 py-8">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+          🧠 AI Market Intelligence
         </h1>
-        <p className="text-muted-foreground">
-          Real-time financial data and market analysis powered by AI
+        <p className="text-gray-600 dark:text-gray-300">
+          Advanced market intelligence and analysis powered by Perplexity AI
         </p>
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {financialInsights.map((insight, index) => (
-          <Card key={index}>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">{insight.metric}</p>
-                  <p className="text-2xl font-bold">{insight.current_value}</p>
-                </div>
-                <div className={`flex items-center text-sm ${
-                  insight.trend === 'up' ? 'text-green-600' : 'text-red-600'
-                }`}>
-                  <TrendingUp className={`w-4 h-4 mr-1 ${
-                    insight.trend === 'down' ? 'rotate-180' : ''
-                  }`} />
-                  {insight.change}
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground mt-2">{insight.description}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* Main Content Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="search">AI Search</TabsTrigger>
-          <TabsTrigger value="analysis">Market Analysis</TabsTrigger>
-          <TabsTrigger value="competitive">Competitive Intel</TabsTrigger>
+      <Tabs defaultValue="search" className="w-full">
+        <TabsList className="grid w-full grid-cols-6">
+          <TabsTrigger value="search">Market Intelligence</TabsTrigger>
+          <TabsTrigger value="opportunity">Opportunity Analysis</TabsTrigger>
+          <TabsTrigger value="competitive">Competitive Analysis</TabsTrigger>
           <TabsTrigger value="alerts">Smart Alerts</TabsTrigger>
-          <TabsTrigger value="insights">Live Insights</TabsTrigger>
+          <TabsTrigger value="forecast">Market Forecasting</TabsTrigger>
+          <TabsTrigger value="compliance">Compliance Analysis</TabsTrigger>
         </TabsList>
 
-        {/* AI Search Tab */}
-        <TabsContent value="search" className="space-y-4">
+        {/* Market Intelligence Search Tab */}
+        <TabsContent value="search" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center">
-                <Brain className="w-5 h-5 mr-2" />
-                Financial Intelligence Search
+              <CardTitle className="flex items-center gap-2">
+                <Search className="h-5 w-5 text-blue-500" />
+                Market Intelligence Search
               </CardTitle>
               <CardDescription>
-                Search for real-time financial and market data using AI-powered analysis
+                Get AI-powered analysis of government contracting markets, trends, and opportunities
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <ContextAwareSearch
-                  query={searchQuery}
-                  onQueryChange={(query) => setSearchQuery(query)}
-                  onSearch={handleContextAwareSearch}
-                  onTemplateSearch={handleTemplateSearch}
-                  loading={loading}
-                />
-
-                {/* Search Results */}
-                {results.length > 0 && (
-                  <div className="space-y-4 mt-6">
-                    <h3 className="text-lg font-semibold">Search Results</h3>
-                    {results.map((result) => (
-                      <Card key={result.id} className="hover:shadow-md transition-shadow">
-                        <CardContent className="p-4">
-                          <div className="flex items-start justify-between mb-2">
-                            <h4 className="text-md font-semibold">{result.title}</h4>
-                            <div className="flex space-x-2">
-                              <Badge variant="secondary">
-                                Relevance: {result.relevance_score}%
-                              </Badge>
-                              <Badge variant="outline">
-                                AI Confidence: {result.ai_confidence}%
-                              </Badge>
-                            </div>
-                          </div>
-                          
-                          <p className="text-muted-foreground mb-3">{result.description}</p>
-                          
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-2">
-                              <span className="text-sm text-muted-foreground">Sources:</span>
-                              {result.citations.map((citation, index) => (
-                                <Badge key={index} variant="outline" className="text-xs">
-                                  {citation}
-                                </Badge>
-                              ))}
-                            </div>
-                            <Button variant="ghost" size="sm">
-                              <ExternalLink className="w-4 h-4 mr-1" />
-                              View Details
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
+                <div>
+                  <Input
+                    placeholder="Enter your market intelligence query (e.g., 'healthcare IT government contracts 2024')"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && !loading && handleSearch()}
+                  />
+                </div>
+                <Button 
+                  onClick={handleSearch}
+                  disabled={loading || !searchQuery.trim()}
+                  className="w-full"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Analyzing...
+                    </>
+                  ) : (
+                    <>
+                      <Brain className="w-4 h-4 mr-2" />
+                      Generate Intelligence
+                    </>
+                  )}
+                </Button>
               </div>
             </CardContent>
           </Card>
+
+          {/* Search Results */}
+          {searchResult && (
+            <Card>
+              <CardHeader>
+                <CardTitle>AI Analysis Results</CardTitle>
+                <CardDescription>
+                  Generated on {new Date(searchResult.timestamp).toLocaleString()}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="prose dark:prose-invert max-w-none">
+                  <div className="whitespace-pre-wrap text-sm leading-relaxed">
+                    {searchResult.analysis}
+                  </div>
+                </div>
+                <div className="mt-4 text-xs text-gray-500">
+                  Model: {searchResult.model} | Query: "{searchResult.query}"
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
-        {/* Market Analysis Tab */}
-        <TabsContent value="analysis" className="space-y-4">
-          <Tabs defaultValue="overview" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="overview">Market Overview</TabsTrigger>
-              <TabsTrigger value="trends">Trend Analysis</TabsTrigger>
-              <TabsTrigger value="forecast">Market Forecast</TabsTrigger>
-            </TabsList>
-
-            {/* Market Overview */}
-            <TabsContent value="overview">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <TrendingUp className="w-5 h-5 mr-2" />
-                    Market Analysis
-                  </CardTitle>
-                  <CardDescription>
-                    AI-generated analysis of current government contracting market trends
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {marketAnalysis ? (
-                    <div className="space-y-6">
-                      <Alert>
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertTitle>Market Summary</AlertTitle>
-                        <AlertDescription>{marketAnalysis.summary}</AlertDescription>
-                      </Alert>
-
-                      <div>
-                        <h4 className="text-lg font-semibold mb-3">Key Trends</h4>
-                        <div className="grid gap-2">
-                          {marketAnalysis.key_trends.map((trend, index) => (
-                            <div key={index} className="flex items-center space-x-2">
-                              <CheckCircle className="w-4 h-4 text-green-500" />
-                              <span className="text-sm">{trend}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div>
-                        <h4 className="text-lg font-semibold mb-3">Hot Sectors</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {marketAnalysis.hot_sectors.map((sector, index) => (
-                            <Card key={index}>
-                              <CardContent className="p-4">
-                                <div className="flex items-center justify-between">
-                                  <div>
-                                    <p className="font-medium">{sector.name}</p>
-                                    <p className="text-2xl font-bold text-green-600">{sector.value}</p>
-                                  </div>
-                                  <Badge variant="secondary" className="text-green-600">
-                                    {sector.growth}
-                                  </Badge>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="text-xs text-muted-foreground">
-                        Last updated: {new Date(marketAnalysis.generated_at).toLocaleString()}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="text-center py-8">
-                      <Brain className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                      <p className="text-muted-foreground">Loading market analysis...</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            {/* Trend Analysis */}
-            <TabsContent value="trends">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <TrendingUp className="w-5 h-5 mr-2" />
-                      Advanced Trend Analysis
-                    </div>
-                    <Button onClick={loadTrendAnalysis} disabled={loading} size="sm">
-                      <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-                      Refresh
-                    </Button>
-                  </CardTitle>
-                  <CardDescription>
-                    Deep dive into spending trends, technology adoption, and market dynamics
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {trendAnalysis ? (
-                    <div className="space-y-6">
-                      {/* Spending Trends */}
-                      <div>
-                        <h4 className="text-lg font-semibold mb-3">Spending Trends</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                          {trendAnalysis.trend_analysis.spending_trends.budget_shifts.map((shift, index) => (
-                            <Card key={index}>
-                              <CardContent className="p-4">
-                                <div className="text-center">
-                                  <div className="text-lg font-semibold">{shift.category}</div>
-                                  <div className="text-2xl font-bold text-green-600">{shift.change}</div>
-                                  <div className="text-sm text-muted-foreground">{shift.value}</div>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          ))}
-                        </div>
-                        
-                        <div>
-                          <h5 className="font-medium mb-2">Emerging Priorities</h5>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                            {trendAnalysis.trend_analysis.spending_trends.emerging_priorities.map((priority, index) => (
-                              <div key={index} className="flex items-center space-x-2">
-                                <CheckCircle className="w-4 h-4 text-blue-500" />
-                                <span className="text-sm">{priority}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Technology Trends */}
-                      <div>
-                        <h4 className="text-lg font-semibold mb-3">Technology Trends</h4>
-                        <div className="space-y-3">
-                          <div>
-                            <h5 className="font-medium mb-2">Fastest Growing Technologies</h5>
-                            <div className="space-y-2">
-                              {trendAnalysis.trend_analysis.technology_trends.fastest_growing.map((tech, index) => (
-                                <div key={index} className="flex items-center justify-between p-2 bg-muted rounded">
-                                  <span className="text-sm">{tech.tech}</span>
-                                  <Badge variant="secondary" className="text-green-600">{tech.growth}</Badge>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                          
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <h5 className="font-medium mb-2">Digital Transformation</h5>
-                              <p className="text-sm p-3 bg-muted rounded">
-                                {trendAnalysis.trend_analysis.technology_trends.digital_transformation}
-                              </p>
-                            </div>
-                            <div>
-                              <h5 className="font-medium mb-2">Cloud Adoption</h5>
-                              <p className="text-sm p-3 bg-muted rounded">
-                                {trendAnalysis.trend_analysis.technology_trends.cloud_adoption}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Strategic Recommendations */}
-                      <div>
-                        <h4 className="text-lg font-semibold mb-3">Strategic Recommendations</h4>
-                        <div className="grid gap-2">
-                          {trendAnalysis.trend_analysis.market_forecast.strategic_recommendations.map((rec, index) => (
-                            <div key={index} className="flex items-start space-x-3 p-3 border rounded-lg">
-                              <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm font-medium mt-0.5">
-                                {index + 1}
-                              </div>
-                              <span className="text-sm">{rec}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="text-center py-8">
-                      <TrendingUp className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                      <p className="text-muted-foreground">Loading trend analysis...</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            {/* Market Forecast */}
-            <TabsContent value="forecast">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <Brain className="w-5 h-5 mr-2" />
-                      Market Forecast
-                    </div>
-                    <Button onClick={loadMarketForecast} disabled={loading} size="sm">
-                      <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-                      Generate Forecast
-                    </Button>
-                  </CardTitle>
-                  <CardDescription>
-                    AI-powered 12-month market predictions and opportunity pipeline
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {marketForecast ? (
-                    <div className="space-y-6">
-                      {/* Market Conditions */}
-                      <div>
-                        <h4 className="text-lg font-semibold mb-3">Market Conditions Forecast</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <h5 className="font-medium mb-2">Growth Projections</h5>
-                            <p className="text-sm p-3 bg-green-50 rounded border border-green-200">
-                              {marketForecast.market_forecast.market_conditions.growth_projections}
-                            </p>
-                          </div>
-                          <div>
-                            <h5 className="font-medium mb-2">Budget Outlook</h5>
-                            <p className="text-sm p-3 bg-blue-50 rounded border border-blue-200">
-                              {marketForecast.market_forecast.market_conditions.budget_outlook}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* High-Value Recompetes */}
-                      <div>
-                        <h4 className="text-lg font-semibold mb-3">High-Value Recompetes Pipeline</h4>
-                        <div className="space-y-3">
-                          {marketForecast.market_forecast.opportunity_pipeline.high_value_recompetes.map((recompete, index) => (
-                            <Card key={index} className="hover:shadow-md transition-shadow">
-                              <CardContent className="p-4">
-                                <div className="flex items-center justify-between">
-                                  <div>
-                                    <h5 className="font-medium">{recompete.title}</h5>
-                                    <div className="text-sm text-muted-foreground mt-1">
-                                      Expected: {recompete.timeline}
-                                    </div>
-                                  </div>
-                                  <div className="text-right">
-                                    <div className="text-lg font-bold text-green-600">{recompete.value}</div>
-                                    <Badge variant="outline">Recompete</Badge>
-                                  </div>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Technology Adoption Timeline */}
-                      <div>
-                        <h4 className="text-lg font-semibold mb-3">Technology Adoption Forecast</h4>
-                        <div className="space-y-3">
-                          <div className="p-3 border rounded-lg">
-                            <div className="font-medium">AI/ML Integration</div>
-                            <div className="text-sm text-muted-foreground">
-                              {marketForecast.market_forecast.technology_adoption.ai_ml_timeline}
-                            </div>
-                          </div>
-                          <div className="p-3 border rounded-lg">
-                            <div className="font-medium">Cloud Migration</div>
-                            <div className="text-sm text-muted-foreground">
-                              {marketForecast.market_forecast.technology_adoption.cloud_migration}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Strategic Recommendations */}
-                      <div>
-                        <h4 className="text-lg font-semibold mb-3">Strategic Positioning</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <h5 className="font-medium mb-2">Capability Priorities</h5>
-                            <div className="space-y-1">
-                              {marketForecast.market_forecast.strategic_recommendations.capability_priorities.map((priority, index) => (
-                                <div key={index} className="flex items-center space-x-2">
-                                  <Target className="w-4 h-4 text-blue-500" />
-                                  <span className="text-sm">{priority}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                          <div>
-                            <h5 className="font-medium mb-2">Positioning Strategies</h5>
-                            <div className="space-y-1">
-                              {marketForecast.market_forecast.strategic_recommendations.positioning_strategies.map((strategy, index) => (
-                                <div key={index} className="flex items-center space-x-2">
-                                  <CheckCircle className="w-4 h-4 text-green-500" />
-                                  <span className="text-sm">{strategy}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="text-center py-8">
-                      <Brain className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                      <p className="text-muted-foreground">Generate AI-powered market forecast...</p>
-                      <Button onClick={loadMarketForecast} className="mt-4">
-                        <Brain className="w-4 h-4 mr-2" />
-                        Generate Forecast
-                      </Button>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </TabsContent>
-
-        {/* Competitive Intelligence Tab */}
-        <TabsContent value="competitive" className="space-y-4">
+        {/* Opportunity Analysis Tab */}
+        <TabsContent value="opportunity" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <Users className="w-5 h-5 mr-2" />
-                  Competitive Intelligence
-                </div>
-                <Button 
-                  onClick={() => {
-                    // Load competitive analysis for demo
-                    toast({
-                      title: "Loading Competitive Analysis",
-                      description: "Analyzing market competitors and positioning...",
-                    })
-                  }} 
-                  disabled={loading} 
-                  size="sm"
-                >
-                  <TrendingUp className="w-4 h-4 mr-2" />
-                  Analyze Market
-                </Button>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-green-500" />
+                Opportunity Analysis & Scoring
               </CardTitle>
               <CardDescription>
-                AI-powered competitive landscape analysis and market positioning insights
+                Enrich opportunity data and get AI-powered scoring based on your profile
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-6">
-                {/* Market Overview Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <Card>
-                    <CardContent className="p-4">
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-blue-600">$15.2B</div>
-                        <div className="text-sm text-muted-foreground">Total Market Size</div>
-                        <div className="text-xs text-green-600 mt-1">+12% YoY</div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card>
-                    <CardContent className="p-4">
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-purple-600">1,247</div>
-                        <div className="text-sm text-muted-foreground">Active Contracts</div>
-                        <div className="text-xs text-green-600 mt-1">+8% Monthly</div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card>
-                    <CardContent className="p-4">
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-orange-600">65%</div>
-                        <div className="text-sm text-muted-foreground">Market Concentration</div>
-                        <div className="text-xs text-muted-foreground mt-1">Top 10 players</div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                {/* Top Competitors */}
-                <div>
-                  <h4 className="text-lg font-semibold mb-4">Top Market Players</h4>
-                  <div className="space-y-3">
-                    {[
-                      { name: "Accenture Federal", share: "12%", awards: "$1.8B", strengths: ["Digital Transformation", "Large Scale Delivery"] },
-                      { name: "General Dynamics IT", share: "8%", awards: "$1.2B", strengths: ["Security Expertise", "Defense Focus"] },
-                      { name: "CACI", share: "6%", awards: "$900M", strengths: ["Intelligence Support", "Analytics"] },
-                      { name: "Booz Allen Hamilton", share: "5%", awards: "$750M", strengths: ["Consulting", "Technology Strategy"] }
-                    ].map((competitor, index) => (
-                      <Card key={index}>
-                        <CardContent className="p-4">
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="font-medium">{competitor.name}</div>
-                            <div className="flex space-x-2">
-                              <Badge variant="secondary">{competitor.share} share</Badge>
-                              <Badge variant="outline">{competitor.awards}</Badge>
-                            </div>
-                          </div>
-                          <div className="flex flex-wrap gap-1">
-                            {competitor.strengths.map((strength, idx) => (
-                              <Badge key={idx} variant="outline" className="text-xs">
-                                {strength}
-                              </Badge>
-                            ))}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="opportunity-select">Select Real Government RFP</Label>
+                    <Button
+                      onClick={fetchOpportunities}
+                      disabled={loadingOpportunities}
+                      size="sm"
+                      variant="outline"
+                    >
+                      {loadingOpportunities ? (
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                      ) : (
+                        <RefreshCw className="w-3 h-3" />
+                      )}
+                    </Button>
                   </div>
-                </div>
-
-                {/* Market Dynamics */}
-                <div>
-                  <h4 className="text-lg font-semibold mb-4">Market Dynamics</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="text-sm">Success Factors</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-2">
-                          {["Strong past performance", "Technical innovation", "Competitive pricing", "Security clearances"].map((factor, index) => (
-                            <div key={index} className="flex items-center space-x-2">
-                              <CheckCircle className="w-4 h-4 text-green-500" />
-                              <span className="text-sm">{factor}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
+                  
+                  <div className="space-y-2">
+                    <Input
+                      placeholder="Search opportunities by title, agency, or description..."
+                      value={opportunitySearch}
+                      onChange={(e) => setOpportunitySearch(e.target.value)}
+                    />
                     
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="text-sm">Market Barriers</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-2">
-                          {["Security clearance requirements", "Past performance references", "Technical complexity", "Capital requirements"].map((barrier, index) => (
-                            <div key={index} className="flex items-center space-x-2">
-                              <AlertTriangle className="w-4 h-4 text-yellow-500" />
-                              <span className="text-sm">{barrier}</span>
+                    <Select value={selectedOpportunityId} onValueChange={handleOpportunitySelect}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder={loadingOpportunities ? "Loading opportunities..." : "Select an opportunity to analyze"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {opportunities.map((opp) => (
+                          <SelectItem key={opp.id} value={opp.id.toString()}>
+                            <div className="text-left">
+                              <div className="font-medium truncate max-w-96">
+                                {opp.title}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {opp.agency_name} • ${(opp.estimated_value || 0).toLocaleString()}
+                              </div>
                             </div>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  {selectedOpportunityObj && (
+                    <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                      <h4 className="font-medium text-sm mb-2">Selected Opportunity Preview:</h4>
+                      <div className="text-xs space-y-1">
+                        <div><strong>Title:</strong> {selectedOpportunityObj.title}</div>
+                        <div><strong>Agency:</strong> {selectedOpportunityObj.agency_name}</div>
+                        <div><strong>Value:</strong> ${(selectedOpportunityObj.estimated_value || 0).toLocaleString()}</div>
+                        <div><strong>Posted:</strong> {new Date(selectedOpportunityObj.posted_date).toLocaleDateString()}</div>
+                        {selectedOpportunityObj.due_date && (
+                          <div><strong>Due:</strong> {new Date(selectedOpportunityObj.due_date).toLocaleDateString()}</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <Label htmlFor="industry">Your Industry</Label>
+                    <Input
+                      id="industry"
+                      placeholder="e.g., Technology, Healthcare"
+                      value={userProfile.industry}
+                      onChange={(e) => setUserProfile({...userProfile, industry: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="company-size">Company Size</Label>
+                    <Select value={userProfile.company_size} onValueChange={(value) => setUserProfile({...userProfile, company_size: value})}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select size" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="small">Small (1-50)</SelectItem>
+                        <SelectItem value="medium">Medium (51-500)</SelectItem>
+                        <SelectItem value="large">Large (500+)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="focus">Focus Area</Label>
+                    <Input
+                      id="focus"
+                      placeholder="e.g., Cybersecurity, Data Analytics"
+                      value={userProfile.focus}
+                      onChange={(e) => setUserProfile({...userProfile, focus: e.target.value})}
+                    />
                   </div>
                 </div>
 
-                {/* Emerging Trends */}
-                <div>
-                  <h4 className="text-lg font-semibold mb-4">Emerging Market Trends</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {[
-                      { trend: "AI/ML Adoption", impact: "High", description: "Increasing demand for AI-powered solutions" },
-                      { trend: "Zero Trust Security", impact: "High", description: "Cybersecurity focus driving requirements" },
-                      { trend: "Cloud-First Strategies", impact: "Medium", description: "Migration to cloud infrastructure" }
-                    ].map((item, index) => (
-                      <Card key={index}>
-                        <CardContent className="p-4">
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="font-medium text-sm">{item.trend}</div>
-                            <Badge variant={item.impact === 'High' ? 'destructive' : 'secondary'} className="text-xs">
-                              {item.impact} Impact
-                            </Badge>
-                          </div>
-                          <p className="text-xs text-muted-foreground">{item.description}</p>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
+                <div className="flex gap-4">
+                  <Button 
+                    onClick={handleEnrichOpportunity}
+                    disabled={loadingAnalysis || !selectedOpportunityObj}
+                    className="flex-1"
+                  >
+                    {loadingAnalysis ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Enriching...
+                      </>
+                    ) : (
+                      <>
+                        <Brain className="w-4 h-4 mr-2" />
+                        Enrich Opportunity
+                      </>
+                    )}
+                  </Button>
+                  <Button 
+                    onClick={handleScoreOpportunity}
+                    disabled={loadingAnalysis || !selectedOpportunityObj}
+                    className="flex-1"
+                    variant="outline"
+                  >
+                    {loadingAnalysis ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Scoring...
+                      </>
+                    ) : (
+                      <>
+                        <Award className="w-4 h-4 mr-2" />
+                        Score Opportunity
+                      </>
+                    )}
+                  </Button>
                 </div>
               </div>
             </CardContent>
           </Card>
+
+          {/* Enrichment Results */}
+          {enrichmentResult && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Enrichment Analysis</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="prose dark:prose-invert max-w-none">
+                  <div className="whitespace-pre-wrap text-sm leading-relaxed">
+                    {enrichmentResult.analysis || enrichmentResult.enrichment}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Scoring Results */}
+          {scoringResult && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Opportunity Score</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="prose dark:prose-invert max-w-none">
+                  <div className="whitespace-pre-wrap text-sm leading-relaxed">
+                    {scoringResult.analysis || scoringResult.score}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* Competitive Analysis Tab */}
+        <TabsContent value="competitive" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Target className="h-5 w-5 text-purple-500" />
+                Competitive Landscape Analysis
+              </CardTitle>
+              <CardDescription>
+                Analyze market competition, key players, and winning strategies
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="naics-codes">NAICS Codes (comma-separated)</Label>
+                  <Input
+                    id="naics-codes"
+                    placeholder="e.g., 541511, 541512, 541513"
+                    value={naicsCodes}
+                    onChange={(e) => setNaicsCodes(e.target.value)}
+                  />
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="agency">Target Agency</Label>
+                    <Input
+                      id="agency"
+                      placeholder="e.g., Department of Defense, GSA"
+                      value={agency}
+                      onChange={(e) => setAgency(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="timeframe">Analysis Timeframe</Label>
+                    <Select value={timeframe} onValueChange={setTimeframe}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1year">Past 1 Year</SelectItem>
+                        <SelectItem value="2years">Past 2 Years</SelectItem>
+                        <SelectItem value="3years">Past 3 Years</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <Button 
+                  onClick={handleCompetitiveAnalysis}
+                  disabled={loadingCompetitive || !naicsCodes.trim() || !agency.trim()}
+                  className="w-full"
+                >
+                  {loadingCompetitive ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Analyzing Competition...
+                    </>
+                  ) : (
+                    <>
+                      <Target className="w-4 h-4 mr-2" />
+                      Analyze Competitive Landscape
+                    </>
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Competitive Results */}
+          {competitiveResult && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Competitive Analysis</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="prose dark:prose-invert max-w-none">
+                  <div className="whitespace-pre-wrap text-sm leading-relaxed">
+                    {competitiveResult.analysis}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         {/* Smart Alerts Tab */}
-        <TabsContent value="alerts" className="space-y-4">
-          <SmartAlerts userProfile={{
-            capabilities: ["Cloud Computing", "Cybersecurity", "Software Development", "AI/ML"],
-            industry_focus: ["Federal IT", "Defense Contracting", "Healthcare IT"],
-            company_size: "Medium",
-            certifications: ["AWS Certified", "Security+", "CMMI Level 3"]
-          }} />
-        </TabsContent>
-
-        {/* Live Insights Tab */}
-        <TabsContent value="insights" className="space-y-4">
+        <TabsContent value="alerts" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <DollarSign className="w-5 h-5 mr-2" />
-                  Live Financial Insights
-                </div>
-                <Button onClick={refreshFinancialData} disabled={loading} size="sm">
-                  <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-                  Refresh
-                </Button>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-orange-500" />
+                Smart Alerts & Predictions
               </CardTitle>
               <CardDescription>
-                Real-time financial metrics and market indicators
+                Generate intelligent alerts about opportunities matching your profile
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {financialInsights.length > 0 ? (
-                <div className="grid gap-4">
-                  {financialInsights.map((insight, index) => (
-                    <Card key={index}>
-                      <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm text-muted-foreground">{insight.metric}</p>
-                            <p className="text-xl font-bold">{insight.current_value}</p>
-                            <p className="text-sm text-muted-foreground mt-1">{insight.description}</p>
-                          </div>
-                          <div className={`flex items-center text-lg font-bold ${
-                            insight.trend === 'up' ? 'text-green-600' : 'text-red-600'
-                          }`}>
-                            <TrendingUp className={`w-5 h-5 mr-1 ${
-                              insight.trend === 'down' ? 'rotate-180' : ''
-                            }`} />
-                            {insight.change}
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <DollarSign className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground mb-4">No financial insights loaded yet</p>
-                  <Button onClick={refreshFinancialData} disabled={loading}>
-                    <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-                    Load Insights
-                  </Button>
-                </div>
-              )}
+              <div className="space-y-4">
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Based on your profile settings above, generate personalized alerts for relevant opportunities.
+                </p>
+
+                <Button 
+                  onClick={handleGenerateAlerts}
+                  disabled={loadingAlerts}
+                  className="w-full"
+                >
+                  {loadingAlerts ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Generating Alerts...
+                    </>
+                  ) : (
+                    <>
+                      <Users className="w-4 h-4 mr-2" />
+                      Generate Smart Alerts
+                    </>
+                  )}
+                </Button>
+              </div>
             </CardContent>
           </Card>
+
+          {/* Alerts Results */}
+          {alertsResult && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Smart Alerts</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="prose dark:prose-invert max-w-none">
+                  <div className="whitespace-pre-wrap text-sm leading-relaxed">
+                    {alertsResult.analysis || alertsResult.alerts}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* Market Forecasting Tab */}
+        <TabsContent value="forecast" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Zap className="h-5 w-5 text-yellow-500" />
+                Market Forecasting
+              </CardTitle>
+              <CardDescription>
+                Predict future market conditions and upcoming opportunities
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="forecast-horizon">Forecast Horizon</Label>
+                  <Select value={forecastHorizon} onValueChange={setForecastHorizon}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="3months">Next 3 Months</SelectItem>
+                      <SelectItem value="6months">Next 6 Months</SelectItem>
+                      <SelectItem value="12months">Next 12 Months</SelectItem>
+                      <SelectItem value="24months">Next 24 Months</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <Button 
+                  onClick={handleMarketForecast}
+                  disabled={loadingForecast}
+                  className="w-full"
+                >
+                  {loadingForecast ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Generating Forecast...
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="w-4 h-4 mr-2" />
+                      Generate Market Forecast
+                    </>
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Forecast Results */}
+          {forecastResult && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Market Forecast</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="prose dark:prose-invert max-w-none">
+                  <div className="whitespace-pre-wrap text-sm leading-relaxed">
+                    {forecastResult.analysis || forecastResult.forecast}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* Compliance Analysis Tab */}
+        <TabsContent value="compliance" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5 text-indigo-500" />
+                Compliance Analysis
+              </CardTitle>
+              <CardDescription>
+                Analyze regulatory and compliance requirements for opportunities
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="compliance-opportunity">Opportunity Data (JSON format)</Label>
+                  <Textarea
+                    id="compliance-opportunity"
+                    placeholder='{"title": "IT Services Contract", "agency": "GSA", "requirements": "...", "certifications": "..."}'
+                    value={complianceOpportunity}
+                    onChange={(e) => setComplianceOpportunity(e.target.value)}
+                    rows={6}
+                  />
+                </div>
+
+                <Button 
+                  onClick={handleComplianceAnalysis}
+                  disabled={loadingCompliance || !complianceOpportunity.trim()}
+                  className="w-full"
+                >
+                  {loadingCompliance ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Analyzing Compliance...
+                    </>
+                  ) : (
+                    <>
+                      <FileText className="w-4 h-4 mr-2" />
+                      Analyze Compliance Requirements
+                    </>
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Compliance Results */}
+          {complianceResult && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Compliance Analysis</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="prose dark:prose-invert max-w-none">
+                  <div className="whitespace-pre-wrap text-sm leading-relaxed">
+                    {complianceResult.analysis}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
-
-      {/* Status Alert */}
-      <Alert>
-        <AlertCircle className="h-4 w-4" />
-        <AlertTitle>Integration Status</AlertTitle>
-        <AlertDescription>
-          Perplexity AI integration is active. This page demonstrates the planned functionality. 
-          Backend API endpoints are being developed to provide real-time financial data.
-        </AlertDescription>
-      </Alert>
     </div>
   )
 }

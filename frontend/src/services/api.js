@@ -5,7 +5,7 @@
 
 const API_BASE_URL = process.env.NODE_ENV === 'production' 
   ? 'https://api.rfptracking.com' 
-  : 'http://localhost:5002'
+  : 'http://localhost:5555'
 
 class APIError extends Error {
   constructor(message, status, data) {
@@ -274,6 +274,87 @@ export const healthCheckAll = async () => {
     name: services[index].name,
     ...result.value
   }))
+}
+
+/**
+ * Perplexity AI API
+ */
+export const apiClient = {
+  // Get real opportunities data
+  getOpportunities: async (params = {}) => {
+    const searchParams = new URLSearchParams()
+    if (params.per_page) searchParams.append('per_page', params.per_page)
+    if (params.page) searchParams.append('page', params.page)
+    if (params.search) searchParams.append('search', params.search)
+    
+    const url = `/api/opportunities${searchParams.toString() ? '?' + searchParams.toString() : ''}`
+    return apiRequest(url)
+  },
+
+  // Get single opportunity details
+  getOpportunityDetail: async (id) => {
+    return apiRequest(`/api/opportunities/${id}`)
+  },
+
+  // Market Intelligence Search
+  searchFinancialData: async (query) => {
+    return apiRequest('/api/perplexity/search', {
+      method: 'POST',
+      body: JSON.stringify({ query })
+    })
+  },
+
+  // Opportunity Enrichment
+  enrichOpportunity: async (opportunity) => {
+    return apiRequest('/api/perplexity/enrich-opportunity', {
+      method: 'POST',
+      body: JSON.stringify({ opportunity })
+    })
+  },
+
+  // Opportunity Scoring
+  scoreOpportunity: async (opportunity, userProfile) => {
+    return apiRequest('/api/perplexity/score-opportunity', {
+      method: 'POST',
+      body: JSON.stringify({ opportunity, user_profile: userProfile })
+    })
+  },
+
+  // Competitive Analysis
+  analyzeCompetitiveLandscape: async (naicsCodes, agency, timeframe) => {
+    return apiRequest('/api/perplexity/competitive-analysis', {
+      method: 'POST',
+      body: JSON.stringify({ 
+        naics_codes: naicsCodes, 
+        agency, 
+        timeframe 
+      })
+    })
+  },
+
+  // Smart Alerts
+  generateSmartAlerts: async (userProfile) => {
+    return apiRequest('/api/perplexity/smart-alerts', {
+      method: 'POST',
+      body: JSON.stringify({ user_profile: userProfile })
+    })
+  },
+
+  // Market Forecasting
+  forecastMarketConditions: async (horizon) => {
+    return apiRequest('/api/perplexity/market-forecast', {
+      method: 'POST',
+      body: JSON.stringify({ horizon })
+    })
+  },
+
+  // Compliance Analysis
+  analyzeCompliance: async (opportunity) => {
+    return apiRequest('/api/perplexity/compliance-analysis', {
+      method: 'POST',
+      body: JSON.stringify({ opportunity })
+    })
+  }
 }
 
 /**

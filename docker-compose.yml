@@ -1,0 +1,116 @@
+version: '3.8'
+
+services:
+  # Flask Backend API
+  backend:
+    build: ./backend
+    container_name: odb-backend
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=development
+      - DATABASE_URL=sqlite:///instance/opportunities.db
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key-here}
+      - SAM_API_KEY=${SAM_API_KEY:-}
+      - PERPLEXITY_API_KEY=${PERPLEXITY_API_KEY:-}
+      - FIRECRAWL_API_KEY=${FIRECRAWL_API_KEY:-}
+      - SUPABASE_URL=${SUPABASE_URL:-}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY:-}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY:-}
+      - REDIS_URL=redis://redis:6379
+    volumes:
+      - ./backend/instance:/app/instance
+      - ./backend:/app
+    depends_on:
+      - redis
+    networks:
+      - odb_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health-simple"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # React Frontend (Production Build)
+  frontend:
+    build: ./frontend
+    container_name: odb-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - odb_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis Cache (for Perplexity API caching)
+  redis:
+    image: redis:7.2-alpine
+    container_name: odb-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+      - ./redis.conf:/usr/local/etc/redis/redis.conf:ro
+    command: redis-server /usr/local/etc/redis/redis.conf
+    networks:
+      - odb_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Redis UI (Development)
+  redis-ui:
+    image: rediscommander/redis-commander:latest
+    container_name: odb-redis-ui
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+      - HTTP_USER=admin
+      - HTTP_PASSWORD=admin123
+    depends_on:
+      - redis
+    networks:
+      - odb_network
+    profiles:
+      - dev
+
+  # Development Frontend (Hot Reload)
+  frontend-dev:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: odb-frontend-dev
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_BASE_URL=http://localhost:5000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - odb_network
+    profiles:
+      - dev
+
+volumes:
+  redis_data:
+    driver: local
+
+networks:
+  odb_network:
+    driver: bridge
