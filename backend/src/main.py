@@ -27,7 +27,11 @@ except ImportError as e:
 # Load environment variables
 load_dotenv()
 
+<<<<<<< feature/advanced-perplexity-intelligence
 # Create Flask app
+=======
+# Create Flask app instance
+>>>>>>> main
 app = Flask(__name__)
 
 # Enable CORS properly - allow all origins for development
